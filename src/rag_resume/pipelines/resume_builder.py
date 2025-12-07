@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import typing
+import uuid
+from dataclasses import dataclass
 from enum import Enum, auto
-from typing import final
+from typing import Any, final
 
-from attr import dataclass
+from pydantic import BaseModel
 
 from rag_resume.graph.edges import CommonGraphStates, PipelineEdge
+from rag_resume.json import JsonCodecProtocol, PythonJSONType
+from rag_resume.llms.chat import ChatMessage, ChatRole
 from rag_resume.pipelines.types import AsyncPipelineAction, PipelineAction, PipelineProtocol
 
 if typing.TYPE_CHECKING:
     from rag_resume.llms.chat import ChatLLMProtocol
+    from rag_resume.llms.embedding import VectorStoreProtocol
 
 
 class ResumeBuilderSteps(Enum):
@@ -26,8 +32,31 @@ class ResumeBuilderState:
     """Resume builder state."""
 
     description: str
-    exprience: list[str]
-    bullet_points: list[str]
+    exprience: list[str] | None = None
+    bullet_points: list[str] | None = None
+
+
+class ResumeBuilderVectorMetadata(BaseModel):
+    user_name: str | None = None
+    user_id: uuid.UUID | None = None
+
+
+@final
+class ResumeBuilderVectorMetadataCodec(JsonCodecProtocol[ResumeBuilderVectorMetadata]):
+    def encode_json(self, data: ResumeBuilderVectorMetadata) -> bytes:
+        return ResumeBuilderVectorMetadata.model_dump_json(data).encode()
+
+    def encode_python_json(self, data: ResumeBuilderVectorMetadata) -> PythonJSONType:
+        return ResumeBuilderVectorMetadata.model_dump(data)
+
+    def decode_json(self, data: bytes) -> ResumeBuilderVectorMetadata:
+        return ResumeBuilderVectorMetadata.model_validate_json(data)
+
+    def convert_json(self, data: PythonJSONType) -> ResumeBuilderVectorMetadata:
+        return ResumeBuilderVectorMetadata.model_validate(data)
+
+    def schema(self) -> dict[str, Any]:
+        return ResumeBuilderVectorMetadata.model_json_schema()
 
 
 @final
@@ -37,9 +66,12 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
     steps_type = ResumeBuilderSteps
     state_type = ResumeBuilderState
 
-    def __init__(self, chat_llm: ChatLLMProtocol) -> None:
+    def __init__(
+        self, chat_llm: ChatLLMProtocol, vector_store: VectorStoreProtocol[ResumeBuilderVectorMetadata]
+    ) -> None:
         """Initialize ResumeBuilderPipeline."""
         self.chat_llm = chat_llm
+        self.vector_store = vector_store
         self.graph_edges = [
             PipelineEdge(
                 CommonGraphStates.START,
@@ -61,7 +93,8 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
         Returns:
             ResumeBuilderState: The updated state of the pipeline after looking up experience.
         """
-        return dataclasses.replace(state, description="Lookup experience")
+        exprience_docs = self.vector_store.lookup(query=state.description, filter_func=lambda _: True, top_k=4)
+        return dataclasses.replace(state, exprience=[doc.content for doc in exprience_docs])
 
     def generate(self, state: ResumeBuilderState) -> ResumeBuilderState:
         """Generate bullet points based on the query and answer.
@@ -72,7 +105,12 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
         Returns:
             ResumeBuilderState: The updated state of the pipeline after generating bullet points.
         """
-        return dataclasses.replace(state, description="Lookup experience")
+        prompt = {
+            "prompt": "Generate bullet points for the following exprience that best match this description",
+            "exprience": state.exprience,
+        }
+        response = self.chat_llm.chat(messages=[ChatMessage(ChatRole.USER, content=json.dumps(prompt))])
+        return dataclasses.replace(state, bullet_points=response.content)
 
     def implementation_for(
         self, step: ResumeBuilderSteps
