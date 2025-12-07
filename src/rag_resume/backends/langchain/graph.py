@@ -31,7 +31,7 @@ def _build_lang_graph(
     Args:
         impl (PipelineProtocol[PipelineStepsType, PipelineStateType]): The implementation of a PipelineProtocol
             that will generate this graph builder.
-        node_name_overrides (dict[CommonNodeType  |  PipelineStepsType, str] | None, optional): A dictionary mapping
+        node_name_overrides (dict[CommonGraphStates  |  PipelineStepsType, str] | None, optional): A dictionary mapping
             node name enums to custom strings. Defaults to None only setting the common node names.
 
     Returns:

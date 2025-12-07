@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import typing
 from enum import Enum, auto
 from typing import final
@@ -7,8 +8,10 @@ from typing import final
 from attr import dataclass
 
 from rag_resume.graph.edges import CommonGraphStates, PipelineEdge
-from rag_resume.llms.chat import ChatLLM
 from rag_resume.pipelines.types import AsyncPipelineAction, PipelineAction, PipelineProtocol
+
+if typing.TYPE_CHECKING:
+    from rag_resume.llms.chat import ChatLLMProtocol
 
 
 class ResumeBuilderSteps(Enum):
@@ -22,8 +25,9 @@ class ResumeBuilderSteps(Enum):
 class ResumeBuilderState:
     """Resume builder state."""
 
-    query: str
-    ans: list[str]
+    description: str
+    exprience: list[str]
+    bullet_points: list[str]
 
 
 @final
@@ -33,7 +37,7 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
     steps_type = ResumeBuilderSteps
     state_type = ResumeBuilderState
 
-    def __init__(self, chat_llm: ChatLLM | None = None) -> None:
+    def __init__(self, chat_llm: ChatLLMProtocol) -> None:
         """Initialize ResumeBuilderPipeline."""
         self.chat_llm = chat_llm
         self.graph_edges = [
@@ -45,14 +49,8 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
                 ResumeBuilderSteps.LOOKUP_EXPRIENCE,
                 ResumeBuilderSteps.GENERATE_BULLET_POINTS,
             ),
-            PipelineEdge(ResumeBuilderSteps.GENERATE_BULLET_POINTS, CommonGraphStates.END),
+            PipelineEdge(ResumeBuilderSteps.LOOKUP_EXPRIENCE, CommonGraphStates.END),
         ]
-
-    def conditional_edge(self, state: ResumeBuilderState) -> ResumeBuilderSteps | CommonGraphStates:
-        """Conditional edge for graph."""
-        if state.query == "Experience Lookup":
-            return CommonGraphStates.END
-        return ResumeBuilderSteps.GENERATE_BULLET_POINTS
 
     def lookup(self, state: ResumeBuilderState) -> ResumeBuilderState:
         """Lookup experience based on the query.
@@ -63,7 +61,7 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
         Returns:
             ResumeBuilderState: The updated state of the pipeline after looking up experience.
         """
-        return ResumeBuilderState(query="Experience Lookup", ans=state.ans)
+        return dataclasses.replace(state, description="Lookup experience")
 
     def generate(self, state: ResumeBuilderState) -> ResumeBuilderState:
         """Generate bullet points based on the query and answer.
@@ -74,7 +72,7 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
         Returns:
             ResumeBuilderState: The updated state of the pipeline after generating bullet points.
         """
-        return ResumeBuilderState(query="Generate", ans=["test"])
+        return dataclasses.replace(state, description="Lookup experience")
 
     def implementation_for(
         self, step: ResumeBuilderSteps

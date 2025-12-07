@@ -1,19 +1,22 @@
 from enum import Enum
 from typing import Any, ClassVar, Protocol, TypeVar
 
+from pydantic import BaseModel
+from typing_extensions import runtime_checkable
 
+
+@runtime_checkable
 class DataclassLike(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Any]]
 
 
+@runtime_checkable
 class TypedDictLike(Protocol):
     __required_keys__: ClassVar[frozenset[str]]
     __optional_keys__: ClassVar[frozenset[str]]
 
 
-SerializableTypes = DataclassLike | TypedDictLike
-
-PipelineStateTypes = TypedDictLike | DataclassLike
+PipelineStateTypes = DataclassLike | TypedDictLike | BaseModel
 
 PipelineStepsType = TypeVar("PipelineStepsType", bound=Enum)
 PipelineStepsType_contra = TypeVar("PipelineStepsType_contra", bound=Enum, contravariant=True)
