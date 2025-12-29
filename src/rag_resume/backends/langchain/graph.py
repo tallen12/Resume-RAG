@@ -1,7 +1,9 @@
 from collections.abc import Callable, Sequence
+from typing import cast, final, override
 
-from langgraph.func import END, START
-from langgraph.graph import StateGraph
+from langgraph.func import END, START  # pyright: ignore[reportMissingTypeStubs]
+from langgraph.graph import StateGraph  # pyright: ignore[reportMissingTypeStubs]
+from pydantic_core.core_schema import JsonType
 
 from rag_resume._types import PipelineStateType, PipelineStepsType
 from rag_resume.graph.edges import CommonGraphStates, DynamicPipelineCallable, DynamicPipelineEdge, PipelineEdge
@@ -40,18 +42,27 @@ def _build_lang_graph(
     builder = StateGraph(impl.state_type)
     node_name_overrides = node_name_overrides or {CommonGraphStates.START: START, CommonGraphStates.END: END}
     for step in impl.steps_type:
-        builder.add_node(node_name_overrides.get(step, step.name), impl.implementation_for(step))
+        builder.add_node(node_name_overrides.get(step, step.name), impl.implementation_for(step))  # pyright: ignore[reportUnknownMemberType, reportUnusedCallResult]
     for edge in impl.graph_edges:
         match edge:
-            case PipelineEdge(start=start, end=end):
-                builder.add_edge(node_name_overrides.get(start, start.name), node_name_overrides.get(end, end.name))
-            case DynamicPipelineEdge(start=start, end=end):
-                builder.add_conditional_edges(
+            case PipelineEdge():
+                # Make types correct
+                start = cast("CommonGraphStates | PipelineStepsType", edge.start)
+                end = cast("CommonGraphStates | PipelineStepsType", edge.end)
+                _ = builder.add_edge(node_name_overrides.get(start, start.name), node_name_overrides.get(end, end.name))
+            case DynamicPipelineEdge():
+                # Make types correct
+                start = cast("CommonGraphStates | PipelineStepsType", edge.start)
+                end = cast("DynamicPipelineCallable[PipelineStepsType, PipelineStateType]", edge.end)
+                _ = builder.add_conditional_edges(
                     node_name_overrides.get(start, start.name), _wrap_dynamic_call_return(end, node_name_overrides)
                 )
+            case _:
+                pass
     return builder
 
 
+@final
 class LangGraphPipeline(
     PipelineGraph[PipelineStepsType, PipelineStateType], AsyncPipelineGraph[PipelineStepsType, PipelineStateType]
 ):
@@ -64,11 +75,12 @@ class LangGraphPipeline(
             impl (PipelineProtocol[PipelineStepsType, PipelineStateType]): The pipeline implementation to use.
         """
         self.impl = impl
-        self.graph = _build_lang_graph(self.impl).compile()
+        self.graph = _build_lang_graph(self.impl).compile()  # pyright: ignore[reportUnknownMemberType]
 
-    def _to_output_type(self, **kwargs) -> PipelineStateType:  # noqa: ANN003
+    def _to_output_type(self, **kwargs) -> PipelineStateType:  # noqa: ANN003  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
         return self.impl.state_type(**kwargs)
 
+    @override
     def invoke(self, initial_state: PipelineStateType) -> PipelineStateType:
         """Invokes the pipeline with a single initial state and returns the final state.
 
@@ -78,8 +90,9 @@ class LangGraphPipeline(
         Returns:
             PipelineStateType: The final state of the pipeline after all steps have been executed.
         """
-        return self._to_output_type(**self.graph.invoke(initial_state))
+        return self._to_output_type(**self.graph.invoke(initial_state))  # pyright: ignore[reportUnknownMemberType, reportAny]
 
+    @override
     def batch(self, initial_states: Sequence[PipelineStateType]) -> Sequence[PipelineStateType]:
         """Invokes the pipeline with multiple initial states and returns the final states for each.
 
@@ -90,8 +103,9 @@ class LangGraphPipeline(
             Sequence[PipelineStateType]: A sequence of final states for each initial state after all
                 steps have been executed.
         """
-        return [self._to_output_type(**result) for result in self.graph.batch(list(initial_states))]
+        return [self._to_output_type(**result) for result in self.graph.batch(list(initial_states))]  # pyright: ignore[reportUnknownMemberType, reportAny]
 
+    @override
     async def async_invoke(self, initial_state: PipelineStateType) -> PipelineStateType:
         """Asynchronously invokes the pipeline with a single initial state and returns the final state.
 
@@ -101,9 +115,10 @@ class LangGraphPipeline(
         Returns:
             PipelineStateType: The final state of the pipeline after all steps have been executed.
         """
-        result = await self.graph.ainvoke(initial_state)
-        return self._to_output_type(**result)
+        result: dict[str, JsonType] = await self.graph.ainvoke(initial_state)  # pyright: ignore[reportUnknownMemberType]
+        return self._to_output_type(**result)  # pyright: ignore[reportUnknownMemberType]
 
+    @override
     async def async_batch(self, initial_states: Sequence[PipelineStateType]) -> Sequence[PipelineStateType]:
         """Asynchronously invokes the pipeline with multiple initial states and returns the final states for each.
 
@@ -115,4 +130,4 @@ class LangGraphPipeline(
                 have been executed.
         """
         results = await self.graph.abatch(list(initial_states))
-        return [self._to_output_type(**result) for result in results]
+        return [self._to_output_type(**result) for result in results]  # pyright: ignore[reportUnknownMemberType, reportAny]

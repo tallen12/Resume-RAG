@@ -3,7 +3,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar
 
-from rag_resume.json import JsonCodecProtocol
+from seriacade.json.interfaces import JsonCodecProtocol
 
 MetadataType = TypeVar("MetadataType")
 

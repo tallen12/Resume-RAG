@@ -1,12 +1,16 @@
-from typing import Any, assert_never, final
+from typing import Any, TypeVar, assert_never, final, override
 
-from langchain.schema import AIMessage, BaseMessage, SystemMessage
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages.base import BaseMessage
 from langchain_core.runnables import RunnableLambda
+from seriacade.json.interfaces import JsonCodecWithSchemaProtocol
+from seriacade.json.types import JsonType
 
-from rag_resume.json import JsonCodecProtocol
+from rag_resume.json import enforce_dict_type
 from rag_resume.llms.chat import ChatLLMProtocol, ChatMessage, ChatRole
+
+T = TypeVar("T")
 
 
 def convert_to_langchain_message(chat_message: ChatMessage) -> HumanMessage | SystemMessage | AIMessage:
@@ -25,7 +29,7 @@ def convert_to_langchain_message(chat_message: ChatMessage) -> HumanMessage | Sy
             return SystemMessage(content=chat_message.content)
         case ChatRole.ASSISTANT:
             return AIMessage(content=chat_message.content)
-        case _:
+        case _:  # pyright: ignore[reportUnnecessaryComparison]
             assert_never(chat_message)
 
 
@@ -39,25 +43,26 @@ def convert_response_to_chat_message(chat_message: BaseMessage) -> ChatMessage:
         Union[HumanMessage, SystemMessage, AIMessage]: The converted message.
     """
     match chat_message:
+        # Ignore some type errors do to weak typing from langchain
         case AIMessage() as message:
             return ChatMessage(
                 role=ChatRole.ASSISTANT,
-                content=message.content,
-                response_metadata=message.response_metadata,
+                content=message.content,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+                response_metadata=message.response_metadata,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
                 id=message.id,
                 usage_metadata=dict(message.usage_metadata) if message.usage_metadata else None,
             )
         case _:
             return ChatMessage(
                 role=ChatRole.ASSISTANT,
-                content=chat_message.content,
-                response_metadata=chat_message.response_metadata,
+                content=chat_message.content,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+                response_metadata=chat_message.response_metadata,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
                 id=chat_message.id,
             )
 
 
-def _extract_base_message_from_structured(message: dict[str, Any]) -> BaseMessage:
-    return message["raw"]
+def _extract_base_message_from_structured(message: dict[str, Any]) -> BaseMessage:  # pyright: ignore[reportExplicitAny]
+    return message["raw"]  # pyright: ignore[reportAny]
 
 
 @final
@@ -65,13 +70,17 @@ class LangChainChatLLM(ChatLLMProtocol):
     """Wrapper for langchain LLMs to match internal protocols."""
 
     def __init__(
-        self, lang_chain_model: BaseChatModel, structured_output: dict[str, Any] | JsonCodecProtocol | None = None
+        self,
+        lang_chain_model: BaseChatModel,
+        structured_output: dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None = None,
     ) -> None:
         self.chat_llm = lang_chain_model
         self.runnable = self.chat_llm
         self.codec = None
-        self.structured_output = structured_output
+        self._structured_output: dict[str, JsonType] | None
+        _ = self.with_structured_output(structured_output)
 
+    @override
     def chat(self, messages: list[ChatMessage]) -> ChatMessage:
         """Sends a list of chat messages to the language model and returns a response message.
 
@@ -84,6 +93,7 @@ class LangChainChatLLM(ChatLLMProtocol):
         message = [convert_to_langchain_message(msg) for msg in messages]
         return convert_response_to_chat_message(self.runnable.invoke(message))
 
+    @override
     async def async_chat(self, messages: list[ChatMessage]) -> ChatMessage:
         """Asynchronously sends a list of chat messages to the language model and returns a response message.
 
@@ -97,24 +107,28 @@ class LangChainChatLLM(ChatLLMProtocol):
         return convert_response_to_chat_message(await self.runnable.ainvoke(message))
 
     @property
-    def structured_output[StructuredTypeVar](self) -> dict[str, Any] | None:
+    @override
+    def structured_output[StructuredTypeVar](self) -> dict[str, JsonType] | None:
         """Property for structured output for LLM."""
         return self._structured_output
 
-    @structured_output.setter
-    def structured_output(self, schema: dict[str, Any] | JsonCodecProtocol | None) -> dict[str, Any] | None:
+    @override
+    def with_structured_output(
+        self, schema: dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None
+    ) -> dict[str, JsonType] | None:
         match schema:
             case dict():
                 self._structured_output = schema
-                self.runnable = self.chat_llm.with_structured_output(
-                    self._structured_output, include_raw=True
+                self.runnable = self.chat_llm.with_structured_output(  # pyright: ignore[reportUnknownMemberType]
+                    schema=self._structured_output, include_raw=True
                 ) | RunnableLambda(_extract_base_message_from_structured)
-            case JsonCodecProtocol():
-                self._structured_output = schema.schema()
-                self.runnable = self.chat_llm.with_structured_output(
+            case JsonCodecWithSchemaProtocol():
+                self._structured_output = enforce_dict_type(schema.json_schema())
+                self.runnable = self.chat_llm.with_structured_output(  # pyright: ignore[reportUnknownMemberType]
                     self._structured_output, include_raw=True
                 ) | RunnableLambda(_extract_base_message_from_structured)
             case None:
                 self._structured_output = None
                 self.runnable = self.chat_llm
+
         return self._structured_output

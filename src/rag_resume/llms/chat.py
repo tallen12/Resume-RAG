@@ -1,9 +1,10 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol, TypeVar, assert_never
+from enum import Enum
+from typing import Any, Protocol, TypeVar
 
-from zmq import Enum
-
-from rag_resume.json import JsonCodecProtocol, JsonDecoderProtocol
+from seriacade.json.interfaces import JsonCodecProtocol, JsonCodecWithSchemaProtocol
+from seriacade.json.types import JsonType
 
 
 class ChatRole(Enum):
@@ -25,20 +26,20 @@ class ChatMessage:
     """
 
     role: ChatRole
-    content: str | list[str | dict[str, Any]]
-    response_metadata: dict | None = None
+    # Support any for compatibility with langchain
+    # TODO: Cleanup these later, don't like having typing exceptions in the higher level abstraction
+    content: str | list[str | dict[str, Any]]  # pyright: ignore[reportExplicitAny]
+    response_metadata: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
     id: str | None = None
-    usage_metadata: dict | None = None
+    usage_metadata: dict[str, Any] | None = None  # pyright: ignore[reportExplicitAny]
 
-    def decode_content(self, codec: JsonDecoderProtocol[T]) -> T:
+    def decode_content(self, codec: JsonCodecProtocol[T]) -> T | Sequence[T]:
         """Helper to decode content using a json decoder."""
         match self.content:
             case str():
                 return codec.decode_json(self.content.encode())
             case list():
-                return codec.convert_json(self.content)
-            case _:
-                assert_never(self)
+                return [codec.convert_from_json(content) for content in self.content]
 
 
 class ChatLLMProtocol(Protocol):
@@ -67,7 +68,7 @@ class ChatLLMProtocol(Protocol):
         ...
 
     @property
-    def structured_output(self) -> dict[str, Any] | None:
+    def structured_output(self) -> dict[str, JsonType] | None:
         """Property for the structured output definition.
 
         Can be set with a provided json schema or derive the json schema from JsonCodecProtocol.
@@ -77,5 +78,6 @@ class ChatLLMProtocol(Protocol):
         """
         ...
 
-    @structured_output.setter
-    def structured_output(self, schema: dict[str, Any] | JsonCodecProtocol | None) -> dict[str, Any] | None: ...
+    def with_structured_output(
+        self, schema: dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None
+    ) -> dict[str, JsonType] | None: ...

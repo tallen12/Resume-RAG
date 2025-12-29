@@ -3,19 +3,19 @@ from __future__ import annotations
 import dataclasses
 import json
 import typing
-import uuid
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, final
+from typing import final, override
 
 from pydantic import BaseModel
 
 from rag_resume.graph.edges import CommonGraphStates, PipelineEdge
-from rag_resume.json import JsonCodecProtocol, PythonJSONType
 from rag_resume.llms.chat import ChatMessage, ChatRole
 from rag_resume.pipelines.types import AsyncPipelineAction, PipelineAction, PipelineProtocol
 
 if typing.TYPE_CHECKING:
+    import uuid
+
     from rag_resume.llms.chat import ChatLLMProtocol
     from rag_resume.llms.embedding import VectorStoreProtocol
 
@@ -37,26 +37,10 @@ class ResumeBuilderState:
 
 
 class ResumeBuilderVectorMetadata(BaseModel):
+    """Metadata for resume builder vector store."""
+
     user_name: str | None = None
     user_id: uuid.UUID | None = None
-
-
-@final
-class ResumeBuilderVectorMetadataCodec(JsonCodecProtocol[ResumeBuilderVectorMetadata]):
-    def encode_json(self, data: ResumeBuilderVectorMetadata) -> bytes:
-        return ResumeBuilderVectorMetadata.model_dump_json(data).encode()
-
-    def encode_python_json(self, data: ResumeBuilderVectorMetadata) -> PythonJSONType:
-        return ResumeBuilderVectorMetadata.model_dump(data)
-
-    def decode_json(self, data: bytes) -> ResumeBuilderVectorMetadata:
-        return ResumeBuilderVectorMetadata.model_validate_json(data)
-
-    def convert_json(self, data: PythonJSONType) -> ResumeBuilderVectorMetadata:
-        return ResumeBuilderVectorMetadata.model_validate(data)
-
-    def schema(self) -> dict[str, Any]:
-        return ResumeBuilderVectorMetadata.model_json_schema()
 
 
 @final
@@ -112,6 +96,7 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
         response = self.chat_llm.chat(messages=[ChatMessage(ChatRole.USER, content=json.dumps(prompt))])
         return dataclasses.replace(state, bullet_points=response.content)
 
+    @override
     def implementation_for(
         self, step: ResumeBuilderSteps
     ) -> PipelineAction[ResumeBuilderState] | AsyncPipelineAction[ResumeBuilderState]:

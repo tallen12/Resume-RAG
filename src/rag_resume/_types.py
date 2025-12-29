@@ -7,7 +7,7 @@ from typing_extensions import runtime_checkable
 
 @runtime_checkable
 class DataclassLike(Protocol):
-    __dataclass_fields__: ClassVar[dict[str, Any]]
+    __dataclass_fields__: ClassVar[dict[str, Any]]  # pyright: ignore[reportExplicitAny]
 
 
 @runtime_checkable
