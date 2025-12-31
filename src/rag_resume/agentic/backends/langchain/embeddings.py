@@ -9,8 +9,8 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import InMemoryVectorStore, VectorStore
 from seriacade.json.interfaces import JsonCodecProtocol
 
+from rag_resume.agentic.llms.embedding import Document, EmbeddingModelProtocol, MetadataType, VectorStoreProtocol
 from rag_resume.json import enforce_dict_type
-from rag_resume.llms.embedding import Document, EmbeddingModelProtocol, MetadataType, VectorStoreProtocol
 
 
 class LangchainEmbeddingModel(EmbeddingModelProtocol):

@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from typing import Protocol
 
-from rag_resume.graph.edges import GraphEdgeLike
-from rag_resume.graph.types import GraphStateType, GraphStepsType
+from rag_resume.agentic.graphs.edges import GraphEdgeLike
+from rag_resume.agentic.graphs.types import GraphStateType, GraphStepsType
 
 
 class GraphAction(Protocol[GraphStateType]):

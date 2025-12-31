@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Generic, Protocol, final
 
-from rag_resume.graph.types import (
+from rag_resume.agentic.graphs.types import (
     GraphStateType,
     GraphStateType_contra,
     GraphStepsType,
