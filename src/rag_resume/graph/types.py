@@ -1,13 +1,26 @@
 from collections.abc import Sequence
-from typing import Protocol
+from enum import Enum
+from typing import Protocol, TypeVar
 
-from rag_resume.pipelines.types import PipelineStateType, PipelineStepsType_co
+from pydantic import BaseModel
+
+from rag_resume._types import DataclassLike, TypedDictLike
+
+GraphStateTypes = DataclassLike | TypedDictLike | BaseModel
+
+GraphStepsType = TypeVar("GraphStepsType", bound=Enum)
+GraphStepsType_contra = TypeVar("GraphStepsType_contra", bound=Enum, contravariant=True)
+GraphStepsType_co = TypeVar("GraphStepsType_co", bound=Enum, covariant=True)
+
+GraphStateType = TypeVar("GraphStateType", bound=GraphStateTypes)
+GraphStateType_contra = TypeVar("GraphStateType_contra", bound=GraphStateTypes, contravariant=True)
+GraphStateType_co = TypeVar("GraphStateType_co", bound=GraphStateTypes, covariant=True)
 
 
-class PipelineGraph(Protocol[PipelineStepsType_co, PipelineStateType]):
+class AgentGraph(Protocol[GraphStepsType_co, GraphStateType]):
     """Protocol a concrete graph to run operations on."""
 
-    def invoke(self, initial_state: PipelineStateType) -> PipelineStateType:
+    def invoke(self, initial_state: GraphStateType) -> GraphStateType:
         """Invoke the pipeline with an initial state and return the final state.
 
         Args:
@@ -18,7 +31,7 @@ class PipelineGraph(Protocol[PipelineStepsType_co, PipelineStateType]):
         """
         ...
 
-    def batch(self, initial_states: Sequence[PipelineStateType]) -> Sequence[PipelineStateType]:
+    def batch(self, initial_states: Sequence[GraphStateType]) -> Sequence[GraphStateType]:
         """Invoke the pipeline with a sequence of initial states and return the final state for each.
 
         Args:
@@ -31,10 +44,10 @@ class PipelineGraph(Protocol[PipelineStepsType_co, PipelineStateType]):
         ...
 
 
-class AsyncPipelineGraph(Protocol[PipelineStepsType_co, PipelineStateType]):
+class AsyncAgentGraph(Protocol[GraphStepsType_co, GraphStateType]):
     """Protocol a concrete graph to run operations on."""
 
-    async def async_invoke(self, initial_state: PipelineStateType) -> PipelineStateType:
+    async def async_invoke(self, initial_state: GraphStateType) -> GraphStateType:
         """Invoke the pipeline with an initial state and return the final state.
 
         Args:
@@ -45,7 +58,7 @@ class AsyncPipelineGraph(Protocol[PipelineStepsType_co, PipelineStateType]):
         """
         ...
 
-    async def async_batch(self, initial_states: Sequence[PipelineStateType]) -> Sequence[PipelineStateType]:
+    async def async_batch(self, initial_states: Sequence[GraphStateType]) -> Sequence[GraphStateType]:
         """Invoke the pipeline with a sequence of initial states and return the final state for each.
 
         Args:

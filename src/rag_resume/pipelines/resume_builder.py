@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import typing
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import final, override
@@ -11,8 +12,8 @@ from uuid import UUID
 from pydantic import BaseModel
 from seriacade.implementations.pydantic import PydanticJsonCodec
 
-from rag_resume.graph.edges import CommonGraphStates, PipelineEdge
-from rag_resume.graph.graph import AsyncPipelineAction, PipelineAction, PipelineProtocol
+from rag_resume.graph.edges import CommonGraphSteps, GraphEdge, PipelineEdgeLike
+from rag_resume.graph.graph import AsyncGraphAction, GraphAction, GraphProtocol
 from rag_resume.llms.chat import ChatMessage, ChatRole
 
 if typing.TYPE_CHECKING:
@@ -50,22 +51,22 @@ class ResumeBuilderStructuredOutput(BaseModel):
 
 
 @final
-class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderState]):
+class ResumeBuilderPipeline(GraphProtocol[ResumeBuilderSteps, ResumeBuilderState]):
     """Pipeline implementation for ResumeBuilder task."""
 
     steps_type = ResumeBuilderSteps
     state_type = ResumeBuilderState
 
-    graph_edges = (
-        PipelineEdge(
-            CommonGraphStates.START,
+    graph_edges: Sequence[PipelineEdgeLike[ResumeBuilderSteps, ResumeBuilderState]] = (
+        GraphEdge(
+            CommonGraphSteps.START,
             ResumeBuilderSteps.LOOKUP_EXPRIENCE,
         ),
-        PipelineEdge(
+        GraphEdge(
             ResumeBuilderSteps.LOOKUP_EXPRIENCE,
             ResumeBuilderSteps.GENERATE_BULLET_POINTS,
         ),
-        PipelineEdge(ResumeBuilderSteps.LOOKUP_EXPRIENCE, CommonGraphStates.END),
+        GraphEdge(ResumeBuilderSteps.LOOKUP_EXPRIENCE, CommonGraphSteps.END),
     )
 
     def __init__(
@@ -113,7 +114,7 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
     @override
     def implementation_for(
         self, step: ResumeBuilderSteps
-    ) -> PipelineAction[ResumeBuilderState] | AsyncPipelineAction[ResumeBuilderState]:
+    ) -> GraphAction[ResumeBuilderState] | AsyncGraphAction[ResumeBuilderState]:
         """Implementation for each step in the pipeline.
 
         Args:

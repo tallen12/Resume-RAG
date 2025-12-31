@@ -2,39 +2,39 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from rag_resume.graph.edges import PipelineEdgeLike
-from rag_resume.pipelines.types import PipelineStateType, PipelineStepsType
+from rag_resume.graph.types import GraphStateType, GraphStepsType
 
 
-class PipelineAction(Protocol[PipelineStateType]):
+class GraphAction(Protocol[GraphStateType]):
     """Represents a synchronous action that can be performed on a pipeline state."""
 
-    def __call__(self, state: PipelineStateType) -> PipelineStateType:
+    def __call__(self, state: GraphStateType) -> GraphStateType:
         """Call the PipelineAction."""
         ...
 
 
-class AsyncPipelineAction(Protocol[PipelineStateType]):
+class AsyncGraphAction(Protocol[GraphStateType]):
     """Represents an asynchronous action that can be performed on a pipeline state."""
 
-    async def __call__(self, state: PipelineStateType) -> PipelineStateType:
+    async def __call__(self, state: GraphStateType) -> GraphStateType:
         """Call the AsyncPipelineAction."""
         ...
 
 
-class PipelineProtocol(Protocol[PipelineStepsType, PipelineStateType]):
+class GraphProtocol(Protocol[GraphStepsType, GraphStateType]):
     """Protocol for pipeline graphs using a global state and typed names for steps.
 
     Intended to be a wrapper compatible with LangGraph API but could allow for other backends in the future.
     """
 
-    steps_type: type[PipelineStepsType]
-    state_type: type[PipelineStateType]
-    graph_edges: Sequence[PipelineEdgeLike[PipelineStepsType]]
+    steps_type: type[GraphStepsType]
+    state_type: type[GraphStateType]
+    graph_edges: Sequence[PipelineEdgeLike[GraphStepsType, GraphStateType]]
 
     def implementation_for(
         self,
-        step: PipelineStepsType,
-    ) -> PipelineAction[PipelineStateType] | AsyncPipelineAction[PipelineStateType]:
+        step: GraphStepsType,
+    ) -> GraphAction[GraphStateType] | AsyncGraphAction[GraphStateType]:
         """Return the action to take for a given step.
 
         This method should return either a synchronous or asynchronous pipeline action that can be executed to perform
