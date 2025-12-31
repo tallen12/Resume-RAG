@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Generic, Protocol, final
 
-from rag_resume._types import (
+from rag_resume.pipelines.types import (
     PipelineStateType,
     PipelineStateType_contra,
     PipelineStepsType,

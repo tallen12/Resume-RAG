@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Protocol
 
-from rag_resume._types import PipelineStateType, PipelineStepsType_co
+from rag_resume.pipelines.types import PipelineStateType, PipelineStepsType_co
 
 
 class PipelineGraph(Protocol[PipelineStepsType_co, PipelineStateType]):

@@ -6,16 +6,16 @@ import typing
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import final, override
+from uuid import UUID
 
 from pydantic import BaseModel
+from seriacade.implementations.pydantic import PydanticJsonCodec
 
 from rag_resume.graph.edges import CommonGraphStates, PipelineEdge
+from rag_resume.graph.graph import AsyncPipelineAction, PipelineAction, PipelineProtocol
 from rag_resume.llms.chat import ChatMessage, ChatRole
-from rag_resume.pipelines.types import AsyncPipelineAction, PipelineAction, PipelineProtocol
 
 if typing.TYPE_CHECKING:
-    import uuid
-
     from rag_resume.llms.chat import ChatLLMProtocol
     from rag_resume.llms.embedding import VectorStoreProtocol
 
@@ -40,7 +40,13 @@ class ResumeBuilderVectorMetadata(BaseModel):
     """Metadata for resume builder vector store."""
 
     user_name: str | None = None
-    user_id: uuid.UUID | None = None
+    user_id: UUID | None = None
+
+
+class ResumeBuilderStructuredOutput(BaseModel):
+    """Structured output for the resume builder pipeline."""
+
+    bullet_points: list[str]
 
 
 @final
@@ -50,23 +56,29 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
     steps_type = ResumeBuilderSteps
     state_type = ResumeBuilderState
 
+    graph_edges = (
+        PipelineEdge(
+            CommonGraphStates.START,
+            ResumeBuilderSteps.LOOKUP_EXPRIENCE,
+        ),
+        PipelineEdge(
+            ResumeBuilderSteps.LOOKUP_EXPRIENCE,
+            ResumeBuilderSteps.GENERATE_BULLET_POINTS,
+        ),
+        PipelineEdge(ResumeBuilderSteps.LOOKUP_EXPRIENCE, CommonGraphStates.END),
+    )
+
     def __init__(
         self, chat_llm: ChatLLMProtocol, vector_store: VectorStoreProtocol[ResumeBuilderVectorMetadata]
     ) -> None:
-        """Initialize ResumeBuilderPipeline."""
+        """Initialize the ResumeBuilderPipeline with a chat language model and a vector store.
+
+        Args:
+            chat_llm (ChatLLMProtocol): The chat language model to use for generating responses.
+            vector_store (VectorStoreProtocol[ResumeBuilderVectorMetadata]): The vector store for embeddings.
+        """
         self.chat_llm = chat_llm
         self.vector_store = vector_store
-        self.graph_edges = [
-            PipelineEdge(
-                CommonGraphStates.START,
-                ResumeBuilderSteps.LOOKUP_EXPRIENCE,
-            ),
-            PipelineEdge(
-                ResumeBuilderSteps.LOOKUP_EXPRIENCE,
-                ResumeBuilderSteps.GENERATE_BULLET_POINTS,
-            ),
-            PipelineEdge(ResumeBuilderSteps.LOOKUP_EXPRIENCE, CommonGraphStates.END),
-        ]
 
     def lookup(self, state: ResumeBuilderState) -> ResumeBuilderState:
         """Lookup experience based on the query.
@@ -93,7 +105,9 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
             "prompt": "Generate bullet points for the following exprience that best match this description",
             "exprience": state.exprience,
         }
-        response = self.chat_llm.chat(messages=[ChatMessage(ChatRole.USER, content=json.dumps(prompt))])
+        response: ChatMessage = self.chat_llm.with_structured_output(
+            structured_output=PydanticJsonCodec(model_type=ResumeBuilderStructuredOutput)
+        ).chat(messages=[ChatMessage(role=ChatRole.USER, content=json.dumps(prompt))])
         return dataclasses.replace(state, bullet_points=response.content)
 
     @override

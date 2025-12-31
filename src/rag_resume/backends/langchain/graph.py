@@ -5,10 +5,10 @@ from langgraph.func import END, START  # pyright: ignore[reportMissingTypeStubs]
 from langgraph.graph import StateGraph  # pyright: ignore[reportMissingTypeStubs]
 from pydantic_core.core_schema import JsonType
 
-from rag_resume._types import PipelineStateType, PipelineStepsType
 from rag_resume.graph.edges import CommonGraphStates, DynamicPipelineCallable, DynamicPipelineEdge, PipelineEdge
+from rag_resume.graph.graph import PipelineProtocol
 from rag_resume.graph.types import AsyncPipelineGraph, PipelineGraph
-from rag_resume.pipelines.types import PipelineProtocol
+from rag_resume.pipelines.types import PipelineStateType, PipelineStepsType
 
 
 def _wrap_dynamic_call_return(
@@ -46,12 +46,12 @@ def _build_lang_graph(
     for edge in impl.graph_edges:
         match edge:
             case PipelineEdge():
-                # Make types correct
+                # Cast to make pyright happy
                 start = cast("CommonGraphStates | PipelineStepsType", edge.start)
                 end = cast("CommonGraphStates | PipelineStepsType", edge.end)
                 _ = builder.add_edge(node_name_overrides.get(start, start.name), node_name_overrides.get(end, end.name))
             case DynamicPipelineEdge():
-                # Make types correct
+                # Cast to make pyright happy
                 start = cast("CommonGraphStates | PipelineStepsType", edge.start)
                 end = cast("DynamicPipelineCallable[PipelineStepsType, PipelineStateType]", edge.end)
                 _ = builder.add_conditional_edges(
