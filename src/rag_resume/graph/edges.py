@@ -31,20 +31,20 @@ class DynamicGraphCallable(Protocol[GraphStepsType_co, GraphStateType_contra]):
 
 @final
 @dataclass
-class GraphEdge[PipelineStepsType]:
-    """Static pipeline edge will always move to the given step regardless of state."""
+class GraphEdge[GraphStepsType]:
+    """Static graph edge that always moves to the given step regardless of state."""
 
-    start: PipelineStepsType | CommonGraphSteps
-    end: PipelineStepsType | CommonGraphSteps
+    start: GraphStepsType | CommonGraphSteps
+    end: GraphStepsType | CommonGraphSteps
 
 
 @final
 @dataclass
 class DynamicGraphEdge(Generic[GraphStepsType, GraphStateType]):
-    """Dynamic pipeline edge which will determine the next step based on state."""
+    """Dynamic graph edge which will determine the next step based on state."""
 
     start: GraphStepsType | CommonGraphSteps
     end: DynamicGraphCallable[GraphStepsType, GraphStateType]
 
 
-PipelineEdgeLike = GraphEdge[GraphStepsType] | DynamicGraphEdge[GraphStepsType, GraphStateType]
+GraphEdgeLike = GraphEdge[GraphStepsType] | DynamicGraphEdge[GraphStepsType, GraphStateType]

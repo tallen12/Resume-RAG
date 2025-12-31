@@ -12,7 +12,7 @@ from uuid import UUID
 from pydantic import BaseModel
 from seriacade.implementations.pydantic import PydanticJsonCodec
 
-from rag_resume.graph.edges import CommonGraphSteps, GraphEdge, PipelineEdgeLike
+from rag_resume.graph.edges import CommonGraphSteps, GraphEdge, GraphEdgeLike
 from rag_resume.graph.graph import AsyncGraphAction, GraphAction, GraphProtocol
 from rag_resume.llms.chat import ChatMessage, ChatRole
 
@@ -24,7 +24,7 @@ if typing.TYPE_CHECKING:
 class ResumeBuilderSteps(Enum):
     """Resume builder pipeline steps."""
 
-    LOOKUP_EXPRIENCE = auto()
+    LOOKUP_EXPERIENCE = auto()
     GENERATE_BULLET_POINTS = auto()
 
 
@@ -33,7 +33,7 @@ class ResumeBuilderState:
     """Resume builder state."""
 
     description: str
-    exprience: list[str] | None = None
+    experience: list[str] | None = None
     bullet_points: list[str] | None = None
 
 
@@ -57,7 +57,7 @@ class ResumeBuilderPipeline(GraphProtocol[ResumeBuilderSteps, ResumeBuilderState
     steps_type = ResumeBuilderSteps
     state_type = ResumeBuilderState
 
-    graph_edges: Sequence[PipelineEdgeLike[ResumeBuilderSteps, ResumeBuilderState]] = (
+    graph_edges: Sequence[GraphEdgeLike[ResumeBuilderSteps, ResumeBuilderState]] = (
         GraphEdge(
             CommonGraphSteps.START,
             ResumeBuilderSteps.LOOKUP_EXPRIENCE,

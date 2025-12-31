@@ -14,7 +14,7 @@ def _wrap_dynamic_call_return(
     edge: DynamicGraphCallable[GraphStepsType, GraphStateType],
     node_name_overrides: dict[CommonGraphSteps | GraphStepsType, str],
 ) -> Callable[[GraphStateType], str]:
-    """Wraps DynamicPipelineCallable to over ride the node names."""
+    """Wraps DynamicGraphCallable to override the node names."""
 
     def wrapped(state: GraphStateType) -> str:
         next_state = edge(state)
@@ -27,13 +27,13 @@ def _build_lang_graph(
     impl: GraphProtocol[GraphStepsType, GraphStateType],
     node_name_overrides: dict[CommonGraphSteps | GraphStepsType, str] | None = None,
 ) -> StateGraph[GraphStateType, None, GraphStateType, GraphStateType]:
-    """Builds a state graph for the given pipeline implementation.
+    """Builds a state graph for the given graph implementation.
 
     Args:
         impl (GraphProtocol[GraphStepsType, GraphStateType]): The implementation of a GraphProtocol
             that will generate this graph builder.
-        node_name_overrides (dict[CommonGraphStates  |  GraphStepsType, str] | None, optional): A dictionary mapping
-            node name enums to custom strings. Defaults to None only setting the common node names.
+        node_name_overrides (dict[CommonGraphSteps | GraphStepsType, str] | None, optional): A dictionary mapping
+            node name enums to custom strings. Defaults to None, only setting the common node names.
 
     Returns:
         StateGraph: The built state graph.
@@ -54,14 +54,14 @@ def _build_lang_graph(
 
 
 @final
-class LangGraphPipeline(AgentGraph[GraphStepsType, GraphStateType], AsyncAgentGraph[GraphStepsType, GraphStateType]):
-    """Pipeline Graph implementation using LangGraph."""
+class LangchainGraph(AgentGraph[GraphStepsType, GraphStateType], AsyncAgentGraph[GraphStepsType, GraphStateType]):
+    """Graph implementation using LangGraph."""
 
     def __init__(self, impl: GraphProtocol[GraphStepsType, GraphStateType]) -> None:
-        """Initializes a new instance of the LangGraphPipeline class.
+        """Initializes a new instance of the LangchainGraph class.
 
         Args:
-            impl (PipelineProtocol[PipelineStepsType, PipelineStateType]): The pipeline implementation to use.
+            impl (GraphProtocol[GraphStepsType, GraphStateType]): The graph implementation to use.
         """
         self.impl = impl
         self.graph = _build_lang_graph(self.impl).compile()  # pyright: ignore[reportUnknownMemberType]
@@ -71,51 +71,51 @@ class LangGraphPipeline(AgentGraph[GraphStepsType, GraphStateType], AsyncAgentGr
 
     @override
     def invoke(self, initial_state: GraphStateType) -> GraphStateType:
-        """Invokes the pipeline with a single initial state and returns the final state.
+        """Invokes the graph with a single initial state and returns the final state.
 
         Args:
-            initial_state (PipelineStateType): The initial state of the pipeline.
+            initial_state (GraphStateType): The initial state of the graph.
 
         Returns:
-            PipelineStateType: The final state of the pipeline after all steps have been executed.
+            GraphStateType: The final state of the graph after all steps have been executed.
         """
         return self._to_output_type(**self.graph.invoke(initial_state))  # pyright: ignore[reportUnknownMemberType, reportAny]
 
     @override
     def batch(self, initial_states: Sequence[GraphStateType]) -> Sequence[GraphStateType]:
-        """Invokes the pipeline with multiple initial states and returns the final states for each.
+        """Invokes the graph with multiple initial states and returns the final states for each.
 
         Args:
-            initial_states (Sequence[PipelineStateType]): A sequence of initial states for the pipeline.
+            initial_states (Sequence[GraphStateType]): A sequence of initial states for the graph.
 
         Returns:
-            Sequence[PipelineStateType]: A sequence of final states for each initial state after all
+            Sequence[GraphStateType]: A sequence of final states for each initial state after all
                 steps have been executed.
         """
         return [self._to_output_type(**result) for result in self.graph.batch(list(initial_states))]  # pyright: ignore[reportUnknownMemberType, reportAny]
 
     @override
     async def async_invoke(self, initial_state: GraphStateType) -> GraphStateType:
-        """Asynchronously invokes the pipeline with a single initial state and returns the final state.
+        """Asynchronously invokes the graph with a single initial state and returns the final state.
 
         Args:
-            initial_state (PipelineStateType): The initial state of the pipeline.
+            initial_state (GraphStateType): The initial state of the graph.
 
         Returns:
-            PipelineStateType: The final state of the pipeline after all steps have been executed.
+            GraphStateType: The final state of the graph after all steps have been executed.
         """
         result: dict[str, JsonType] = await self.graph.ainvoke(initial_state)  # pyright: ignore[reportUnknownMemberType]
         return self._to_output_type(**result)  # pyright: ignore[reportUnknownMemberType]
 
     @override
     async def async_batch(self, initial_states: Sequence[GraphStateType]) -> Sequence[GraphStateType]:
-        """Asynchronously invokes the pipeline with multiple initial states and returns the final states for each.
+        """Asynchronously invokes the graph with multiple initial states and returns the final states for each.
 
         Args:
-            initial_states (Sequence[PipelineStateType]): A sequence of initial states for the pipeline.
+            initial_states (Sequence[GraphStateType]): A sequence of initial states for the graph.
 
         Returns:
-            Sequence[PipelineStateType]: A sequence of final states for each initial state after all steps
+            Sequence[GraphStateType]: A sequence of final states for each initial state after all steps
                 have been executed.
         """
         results = await self.graph.abatch(list(initial_states))
