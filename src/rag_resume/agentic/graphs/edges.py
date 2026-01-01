@@ -22,7 +22,14 @@ class CommonGraphSteps(Enum):
 
 
 class DynamicGraphCallable(Protocol[GraphStepsType_co, GraphStateType_contra]):
-    """A callable that can dynamically determine the next step of the graph depending on state."""
+    """A callable that can dynamically determine the next step of the graph depending on state.
+
+    Args:
+        state (GraphStateType_contra): The current state of the graph.
+
+    Returns:
+        GraphStepsType_co | CommonGraphSteps: The next step in the graph.
+    """
 
     def __call__(self, state: GraphStateType_contra) -> GraphStepsType_co | CommonGraphSteps:
         """Make callable."""
@@ -32,7 +39,16 @@ class DynamicGraphCallable(Protocol[GraphStepsType_co, GraphStateType_contra]):
 @final
 @dataclass
 class GraphEdge[GraphStepsType]:
-    """Static graph edge that always moves to the given step regardless of state."""
+    """Static graph edge that always moves to the given step regardless of state.
+
+    Args:
+        start (GraphStepsType | CommonGraphSteps): The starting step of the edge.
+        end (GraphStepsType | CommonGraphSteps): The ending step of the edge.
+
+    Attributes:
+        start(GraphStepsType | CommonGraphSteps): The starting step of the edge.
+        end(GraphStepsType | CommonGraphSteps): The ending step of the edge.
+    """
 
     start: GraphStepsType | CommonGraphSteps
     end: GraphStepsType | CommonGraphSteps
@@ -41,7 +57,16 @@ class GraphEdge[GraphStepsType]:
 @final
 @dataclass
 class DynamicGraphEdge(Generic[GraphStepsType, GraphStateType]):
-    """Dynamic graph edge which will determine the next step based on state."""
+    """Dynamic graph edge which will determine the next step based on state.
+
+    Args:
+        start (GraphStepsType | CommonGraphSteps): The starting step of the edge.
+        end (DynamicGraphCallable[GraphStepsType, GraphStateType]): The callable that determines the next step.
+
+    Attributes:
+        start(GraphStepsType | CommonGraphSteps): The starting step of the edge.
+        end(DynamicGraphCallable[GraphStepsType, GraphStateType]): The callable that determines the next step.
+    """
 
     start: GraphStepsType | CommonGraphSteps
     end: DynamicGraphCallable[GraphStepsType, GraphStateType]

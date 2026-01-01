@@ -9,16 +9,23 @@ MetadataType = TypeVar("MetadataType")
 
 
 class EmbeddingModelProtocol(Protocol):
-    """Protocol for an embedding model."""
+    """Protocol for an embedding model.
+
+    This protocol defines the interface for an embedding model, which is used to
+    convert text into numerical vectors. It is used in vector stores to
+    represent and query documents based on their embeddings.
+    """
 
     def embed(self, text: str | list[str]) -> Sequence[Sequence[float]]:
         """Embed the given text to vectors.
 
         Args:
-            text (str | list[str]): a string or sequence of strings to embed.
+            text (str | list[str]): A string or sequence of strings to embed.
+                This can be a single string or a list of strings.
 
         Returns:
-            Sequence[Sequence[float]]: a sequence of embedding vectors.
+            Sequence[Sequence[float]]: A sequence of embedding vectors.
+                Each vector is a list of floats representing the embedded text.
         """
         ...
 
@@ -27,7 +34,9 @@ class EmbeddingModelProtocol(Protocol):
 class Document(Generic[MetadataType]):
     """Represents a document in a vector store.
 
-    Metadata is provided a generic to allow for custom datatypes.
+    This class represents a document that is stored in a vector store. It contains
+    the content of the document, a unique identifier, and metadata that can be
+    used for filtering or additional information.
 
     """
 
@@ -39,8 +48,9 @@ class Document(Generic[MetadataType]):
 class VectorStoreProtocol(Protocol[MetadataType]):
     """Protocol for implementing a vector store.
 
-    Requires an embedding model and a codec to encode metadata.
-
+    This protocol defines the interface for a vector store, which is used to
+    store and query documents based on their embeddings. It requires an
+    embedding model and a codec to encode metadata.
     """
 
     embedding_model: EmbeddingModelProtocol
@@ -51,9 +61,11 @@ class VectorStoreProtocol(Protocol[MetadataType]):
 
         Args:
             text (Sequence[str]): Text to store in the vector store.
+                This can be a sequence of strings.
 
         Returns:
-            Sequence[uuid.UUID]: UUIDs for the text inserted into the vector store
+            Sequence[uuid.UUID]: UUIDs for the text inserted into the vector store.
+                Each UUID corresponds to a piece of text added.
         """
         ...
 
@@ -61,27 +73,44 @@ class VectorStoreProtocol(Protocol[MetadataType]):
         """Add text with metadata.
 
         Args:
-            text (Sequence[str]): Text to store in the vector store
-            metadata (list[MetadataType]): Metadata to store in the vector store, must be serializable to json.
+            text (Sequence[str]): Text to store in the vector store.
+                This can be a sequence of strings.
+
+            metadata (list[MetadataType]): Metadata to store in the vector store.
+                This must be a list of serializable objects that can be encoded
+                to JSON. Each metadata item corresponds to a piece of text.
 
         Returns:
-            Sequence[uuid.UUID]: UUIDs for the text inserted into the vector store
+            Sequence[uuid.UUID]: UUIDs for the text inserted into the vector store.
+                Each UUID corresponds to a piece of text added.
         """
         ...
 
+    # TODO: Specify what sort of similarity metric is being used here.
     def lookup(
         self, query: str, filter_func: Callable[[Document[MetadataType]], bool], top_k: int
     ) -> Sequence[Document[MetadataType]]:
         """Lookup entries in the vector store by query string based on cosine similarity.
 
         Args:
-            query (str): query string to lookup in the vector store.
-            filter_func (Callable[[Document[MetadataType]], bool]): function to filter
-                documents returned by lookup. Can be implemented differently (ie. sql queries, mapping over results) \
-                depending on implementation.
-            top_k (int): Return the top k most relevant documents based on similarity score.
+            query (str): Query string to lookup in the vector store.
+                This is the text used to find similar documents.
+
+            filter_func (Callable[[Document[MetadataType]], bool]):
+                Function to filter documents returned by lookup. This function
+                takes a document and returns a boolean indicating whether the
+                document should be included in the results. This can be used to
+                filter based on metadata or other criteria.
+                The underlying implementation of how this function is applied
+                depends on the implementation.
+
+            top_k (int): Number of most relevant documents to return based on
+                similarity score. This is the maximum number of documents to
+                return in the results.
 
         Returns:
-            Sequence[Document[MetadataType]]: Sequence of Documents that are most similar to query string.
+            Sequence[Document[MetadataType]]: Sequence of Documents that are most
+                similar to the query string. Each document is returned with its
+                metadata and embedding vector.
         """
         ...

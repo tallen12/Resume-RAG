@@ -34,7 +34,12 @@ class ChatMessage:
 
 
 class ChatLLMProtocol(Protocol):
-    """Protocol for a chat language model."""
+    """Protocol for a chat language model.
+
+    This protocol defines the interface for a chat language model, including
+    synchronous and asynchronous methods for sending messages and configuring
+    structured output.
+    """
 
     structured_output: dict[str, JsonType] | None
 
@@ -62,4 +67,17 @@ class ChatLLMProtocol(Protocol):
 
     def with_structured_output(
         self, structured_output: dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None
-    ) -> Self: ...
+    ) -> Self:
+        """Configures the chat model to use structured output with a specified schema.
+
+        Args:
+            structured_output (dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None):
+                A dictionary defining the schema for structured output or a codec
+                that can serialize/deserialize the output. If None, structured output
+                is disabled.
+
+        Returns:
+            Self: A new instance of the chat model with the structured output
+                configuration applied.
+        """
+        ...

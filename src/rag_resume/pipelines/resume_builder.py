@@ -22,7 +22,7 @@ if typing.TYPE_CHECKING:
 
 
 class ResumeBuilderSteps(Enum):
-    """Resume builder pipeline steps."""
+    """Enum representing the steps in the resume builder pipeline."""
 
     LOOKUP_EXPERIENCE = auto()
     GENERATE_BULLET_POINTS = auto()
@@ -30,7 +30,7 @@ class ResumeBuilderSteps(Enum):
 
 @dataclass
 class ResumeBuilderState:
-    """Resume builder state."""
+    """Data class representing the state of the resume builder pipeline."""
 
     description: str
     experience: list[str] | None = None
@@ -38,21 +38,21 @@ class ResumeBuilderState:
 
 
 class ResumeBuilderVectorMetadata(BaseModel):
-    """Metadata for resume builder vector store."""
+    """Pydantic model for metadata used in the resume builder vector store."""
 
     user_name: str | None = None
     user_id: UUID | None = None
 
 
 class ResumeBuilderStructuredOutput(BaseModel):
-    """Structured output for the resume builder pipeline."""
+    """Pydantic model for structured output from the resume builder pipeline."""
 
     bullet_points: list[str]
 
 
 @final
 class ResumeBuilderPipeline(GraphProtocol[ResumeBuilderSteps, ResumeBuilderState]):
-    """Pipeline implementation for ResumeBuilder task."""
+    """Implementation of the resume builder pipeline using graph data structures."""
 
     steps_type = ResumeBuilderSteps
     state_type = ResumeBuilderState

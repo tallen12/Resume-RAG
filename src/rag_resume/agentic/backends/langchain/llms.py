@@ -17,10 +17,11 @@ def convert_to_langchain_message(chat_message: ChatMessage) -> HumanMessage | Sy
     """Converts a ChatMessage to a corresponding message type in the langchain library.
 
     Args:
-        chat_message (ChatMessage): The ChatMessage object to convert.
-    ss
+        chat_message (ChatMessage): The ChatMessage object to convert. This represents a message in the chat
+            with a specific role (USER, SYSTEM, or ASSISTANT) and content.
+
     Returns:
-        Union[HumanMessage, SystemMessage, AIMessage]: The converted message.
+        Union[HumanMessage, SystemMessage, AIMessage]: The converted message in langchain format.
     """
     match chat_message.role:
         case ChatRole.USER:
@@ -32,13 +33,17 @@ def convert_to_langchain_message(chat_message: ChatMessage) -> HumanMessage | Sy
 
 
 def convert_response_to_chat_message(chat_message: BaseMessage) -> ChatMessage:
-    """Converts a ChatMessage to a corresponding message type in the langchain library.
+    """Converts a langchain BaseMessage to a ChatMessage.
 
     Args:
-        chat_message (BaseMessage): The ChatMessage object to convert.
+        chat_message (BaseMessage): The message returned by a langchain model. This message can be of type
+            AIMessage, HumanMessage, or SystemMessage.
 
     Returns:
-        Union[HumanMessage, SystemMessage, AIMessage]: The converted message.
+        ChatMessage: A ChatMessage object representing the response from the language model.
+
+    Raises:
+        ValueError: If the message type is unexpected (not AIMessage).
     """
     match chat_message:
         # This function is only used to parse the responses from a LLM, it should only be an AI message
@@ -61,13 +66,32 @@ def _extract_base_message_from_structured(message: dict[str, Any]) -> BaseMessag
 
 @final
 class LangChainChatLLM(ChatLLMProtocol):
-    """Wrapper for langchain LLMs to match internal protocols."""
+    """Wrapper for langchain LLMs to match internal protocols.
+
+    This class provides a wrapper around langchain's BaseChatModel to align with the internal ChatLLMProtocol
+    interface used in the project. It allows for structured output handling and message conversion between
+    langchain and the internal message formats.
+
+    Attributes:
+        lang_chain_model (BaseChatModel): The underlying langchain chat model.
+        structured_output (dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None): Optional schema
+            for structured output. If provided, the model's output will be parsed according to this schema.
+        runnable (RunnableLambda): A runnable that processes the chat messages and returns a ChatMessage.
+    """
 
     def __init__(
         self,
         lang_chain_model: BaseChatModel,
         structured_output: dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None = None,
     ) -> None:
+        """Initializes the LangChainChatLLM wrapper.
+
+        Args:
+            lang_chain_model (BaseChatModel): The langchain chat model to wrap.
+            structured_output (dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None, optional):
+                Optional schema for structured output. If provided, the model's output will be parsed according
+                to this schema. Defaults to None.
+        """
         self.lang_chain_model = lang_chain_model
         self.codec = None
 
@@ -116,4 +140,14 @@ class LangChainChatLLM(ChatLLMProtocol):
     def with_structured_output(
         self, structured_output: dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None
     ) -> Self:
+        """Returns a new instance of LangChainChatLLM with the specified structured output schema.
+
+        Args:
+            structured_output (dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None):
+                The schema for structured output. If provided, the model's output will be parsed according to
+                this schema.
+
+        Returns:
+            Self: A new instance of LangChainChatLLM with the specified structured output schema.
+        """
         return self.__class__(lang_chain_model=self.lang_chain_model, structured_output=structured_output)
