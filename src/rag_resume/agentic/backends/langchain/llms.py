@@ -7,8 +7,8 @@ from langchain_core.runnables import RunnableLambda
 from seriacade.json.interfaces import JsonCodecWithSchemaProtocol
 from seriacade.json.types import JsonType
 
+from rag_resume.agentic.llms.chat import ChatLLMProtocol, ChatMessage, ChatRole
 from rag_resume.json import enforce_dict_type
-from rag_resume.llms.chat import ChatLLMProtocol, ChatMessage, ChatRole
 
 T = TypeVar("T")
 

@@ -1,13 +1,15 @@
 from collections.abc import Callable, Sequence
-from typing import final, override
+from typing import TYPE_CHECKING, final, override
 
 from langgraph.func import END, START  # pyright: ignore[reportMissingTypeStubs]
 from langgraph.graph import StateGraph  # pyright: ignore[reportMissingTypeStubs]
-from pydantic_core.core_schema import JsonType
 
 from rag_resume.agentic.graphs.edges import CommonGraphSteps, DynamicGraphCallable, DynamicGraphEdge, GraphEdge
 from rag_resume.agentic.graphs.graph import GraphProtocol
 from rag_resume.agentic.graphs.types import AgentGraph, AsyncAgentGraph, GraphStateType, GraphStepsType
+
+if TYPE_CHECKING:
+    from seriacade.json.types import JsonType
 
 
 def _wrap_dynamic_call_return(
