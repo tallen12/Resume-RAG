@@ -12,13 +12,13 @@ from uuid import UUID
 from pydantic import BaseModel
 from seriacade.implementations.pydantic import PydanticJsonCodec
 
-from rag_resume.graphs.edges import CommonGraphSteps, GraphEdge, GraphEdgeLike
-from rag_resume.graphs.graph import AsyncGraphAction, GraphAction, GraphProtocol
-from rag_resume.llms.chat import ChatMessage, ChatRole
+from rag_resume.agentic.graphs.edges import CommonGraphSteps, GraphEdge, GraphEdgeLike
+from rag_resume.agentic.graphs.graph import AsyncGraphAction, GraphAction, GraphProtocol
+from rag_resume.agentic.llms.chat import ChatMessage, ChatRole
 
 if typing.TYPE_CHECKING:
-    from rag_resume.llms.chat import ChatLLMProtocol
-    from rag_resume.llms.embedding import VectorStoreProtocol
+    from rag_resume.agentic.llms.chat import ChatLLMProtocol
+    from rag_resume.agentic.llms.embedding import VectorStoreProtocol
 
 
 class ResumeBuilderSteps(Enum):
@@ -60,13 +60,13 @@ class ResumeBuilderPipeline(GraphProtocol[ResumeBuilderSteps, ResumeBuilderState
     graph_edges: Sequence[GraphEdgeLike[ResumeBuilderSteps, ResumeBuilderState]] = (
         GraphEdge(
             CommonGraphSteps.START,
-            ResumeBuilderSteps.LOOKUP_EXPRIENCE,
+            ResumeBuilderSteps.LOOKUP_EXPERIENCE,
         ),
         GraphEdge(
-            ResumeBuilderSteps.LOOKUP_EXPRIENCE,
+            ResumeBuilderSteps.LOOKUP_EXPERIENCE,
             ResumeBuilderSteps.GENERATE_BULLET_POINTS,
         ),
-        GraphEdge(ResumeBuilderSteps.LOOKUP_EXPRIENCE, CommonGraphSteps.END),
+        GraphEdge(ResumeBuilderSteps.LOOKUP_EXPERIENCE, CommonGraphSteps.END),
     )
 
     def __init__(
@@ -103,8 +103,8 @@ class ResumeBuilderPipeline(GraphProtocol[ResumeBuilderSteps, ResumeBuilderState
             ResumeBuilderState: The updated state of the pipeline after generating bullet points.
         """
         prompt = {
-            "prompt": "Generate bullet points for the following exprience that best match this description",
-            "exprience": state.exprience,
+            "prompt": "Generate bullet points for the following experience that best match this description",
+            "exprience": state.experience,
         }
         response: ChatMessage = self.chat_llm.with_structured_output(
             structured_output=PydanticJsonCodec(model_type=ResumeBuilderStructuredOutput)
@@ -125,7 +125,7 @@ class ResumeBuilderPipeline(GraphProtocol[ResumeBuilderSteps, ResumeBuilderState
                 for the given step.
         """
         match step:
-            case ResumeBuilderSteps.LOOKUP_EXPRIENCE:
+            case ResumeBuilderSteps.LOOKUP_EXPERIENCE:
                 return self.lookup
             case ResumeBuilderSteps.GENERATE_BULLET_POINTS:
                 return self.generate
