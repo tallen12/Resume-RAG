@@ -1,12 +1,12 @@
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, final, override
+from typing import TYPE_CHECKING, Generic, final
 
 from langgraph.func import END, START  # pyright: ignore[reportMissingTypeStubs]
 from langgraph.graph import StateGraph  # pyright: ignore[reportMissingTypeStubs]
 
 from rag_resume.agentic.graphs.edges import CommonGraphSteps, DynamicGraphCallable, DynamicGraphEdge, GraphEdge
 from rag_resume.agentic.graphs.graph import GraphProtocol
-from rag_resume.agentic.graphs.types import AgentGraph, AsyncAgentGraph, GraphStateType, GraphStepsType
+from rag_resume.agentic.graphs.types import GraphStateType, GraphStepsType
 
 if TYPE_CHECKING:
     from seriacade.json.types import JsonType
@@ -89,11 +89,11 @@ def _build_lang_graph(
 
 
 @final
-class LangchainGraph(AgentGraph[GraphStepsType, GraphStateType], AsyncAgentGraph[GraphStepsType, GraphStateType]):
+class LangchainGraph(Generic[GraphStepsType, GraphStateType]):
     """Graph implementation using LangGraph.
 
     This class provides a concrete implementation of the AgentGraph and
-    AsyncAgentGraph interfaces using the LangGraph library. It allows for
+    AsyncAgentGraph protocol using the LangGraph library. It allows for
     building and executing state graphs based on the provided graph protocol
     implementation.
 
@@ -130,7 +130,6 @@ class LangchainGraph(AgentGraph[GraphStepsType, GraphStateType], AsyncAgentGraph
         """
         return self.impl.state_type(**kwargs)
 
-    @override
     def invoke(self, initial_state: GraphStateType) -> GraphStateType:
         """Invokes the graph with a single initial state and returns the final state.
 
@@ -147,7 +146,6 @@ class LangchainGraph(AgentGraph[GraphStepsType, GraphStateType], AsyncAgentGraph
         """
         return self._to_output_type(**self.graph.invoke(initial_state))  # pyright: ignore[reportUnknownMemberType, reportAny]
 
-    @override
     def batch(self, initial_states: Sequence[GraphStateType]) -> Sequence[GraphStateType]:
         """Invokes the graph with multiple initial states and returns the final states for each.
 
@@ -166,7 +164,6 @@ class LangchainGraph(AgentGraph[GraphStepsType, GraphStateType], AsyncAgentGraph
         """
         return [self._to_output_type(**result) for result in self.graph.batch(list(initial_states))]  # pyright: ignore[reportUnknownMemberType, reportAny]
 
-    @override
     async def async_invoke(self, initial_state: GraphStateType) -> GraphStateType:
         """Asynchronously invokes the graph with a single initial state and returns the final state.
 
@@ -184,7 +181,6 @@ class LangchainGraph(AgentGraph[GraphStepsType, GraphStateType], AsyncAgentGraph
         result: dict[str, JsonType] = await self.graph.ainvoke(initial_state)  # pyright: ignore[reportUnknownMemberType]
         return self._to_output_type(**result)  # pyright: ignore[reportUnknownMemberType]
 
-    @override
     async def async_batch(self, initial_states: Sequence[GraphStateType]) -> Sequence[GraphStateType]:
         """Asynchronously invokes the graph with multiple initial states and returns the final states for each.
 
