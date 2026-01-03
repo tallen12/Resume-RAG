@@ -444,14 +444,14 @@ wheels = [
 
 [[package]]
 name = "hypothesis"
-version = "6.148.8"
+version = "6.148.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "sortedcontainers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/25/b3/e098d91195f121602bb3e4d00276cf1da0035df53e9deeb18115467d6da9/hypothesis-6.148.8.tar.gz", hash = "sha256:fa6b2ae029bc02f9d2d6c2257b0cbf2dc3782362457d2027a038ad7f4209c385", size = 471333 }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/1b/de4a349fe5942e500c3f6b0e61e09347d9fefab9e1ac7048c909080a31a0/hypothesis-6.148.9.tar.gz", hash = "sha256:6ec0696ed2fff8c514d61b6f1ca2cd1cb00c948ffd18cab1877c941c0ddb2839", size = 471562 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/61/95/0742f59910074262e98d9f3bb0f7fb7a6b4bfb7e70b6d203eeb5625a6452/hypothesis-6.148.8-py3-none-any.whl", hash = "sha256:c1842f47f974d74661b3779a26032f8b91bc1eb30d84741714d3712d7f43e85e", size = 538280 },
+    { url = "https://files.pythonhosted.org/packages/ac/65/c7fbad05a0ace913b60342d36d1b871edc861f81ab98f60a298a781144a5/hypothesis-6.148.9-py3-none-any.whl", hash = "sha256:c514fcca90eded0e6b56d4df4bc41db935cb4635a9fe3ec9be21d09243ca983b", size = 538490 },
 ]
 
 [[package]]
@@ -1185,6 +1185,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyhamcrest"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/16/3f/f286caba4e64391a8dc9200e6de6ce0d07471e3f718248c3276843b7793b/pyhamcrest-2.1.0.tar.gz", hash = "sha256:c6acbec0923d0cb7e72c22af1926f3e7c97b8e8d69fc7498eabacaf7c975bd9c", size = 60538 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/71/1b25d3797a24add00f6f8c1bb0ac03a38616e2ec6606f598c1d50b0b0ffb/pyhamcrest-2.1.0-py3-none-any.whl", hash = "sha256:f6913d2f392e30e0375b3ecbd7aee79e5d1faa25d345c8f4ff597665dcac2587", size = 54555 },
+]
+
+[[package]]
 name = "pytest"
 version = "9.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1198,6 +1207,30 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d1/db/7ef3487e0fb0049ddb5ce41d3a49c235bf9ad299b6a25d5780a89f19230f/pytest-9.0.2.tar.gz", hash = "sha256:75186651a92bd89611d1d9fc20f0b4345fd827c41ccd5c299a868a05d70edf11", size = 1568901 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3b/ab/b3226f0bd7cdcf710fbede2b3548584366da3b19b5021e74f5bde2a8fa3f/pytest-9.0.2-py3-none-any.whl", hash = "sha256:711ffd45bf766d5264d487b917733b453d917afd2b0ad65223959f59089f875b", size = 374801 },
+]
+
+[[package]]
+name = "pytest-lazy-fixtures"
+version = "1.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/75/05/030c4efe596bc31bcb4fefb31f5fcefc8917df99bd745a920763c5e81863/pytest_lazy_fixtures-1.4.0.tar.gz", hash = "sha256:f544b60c96b909b307558a62cc1f28f026f11e9f03d7f583a1dc636de3dbcb10", size = 36188 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/60/a0/a07399bd4842282fe3c2da264746069d5216640bc0940b7a359e2c950aa6/pytest_lazy_fixtures-1.4.0-py3-none-any.whl", hash = "sha256:c5db4506fa0ade5887189d1a18857fec4c329b4f49043fef6732c67c9553389a", size = 9680 },
+]
+
+[[package]]
+name = "pytest-mock"
+version = "3.15.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/68/14/eb014d26be205d38ad5ad20d9a80f7d201472e08167f0bb4361e251084a9/pytest_mock-3.15.1.tar.gz", hash = "sha256:1849a238f6f396da19762269de72cb1814ab44416fa73a8686deac10b0d87a0f", size = 34036 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5a/cc/06253936f4a7fa2e0f48dfe6d851d9c56df896a9ab09ac019d70b760619c/pytest_mock-3.15.1-py3-none-any.whl", hash = "sha256:0a25e2eb88fe5168d535041d09a4529a188176ae608a6d249ee65abc0949630d", size = 10095 },
 ]
 
 [[package]]
@@ -1276,7 +1309,10 @@ dev = [
     { name = "basedpyright" },
     { name = "hypothesis" },
     { name = "networkx" },
+    { name = "pyhamcrest" },
     { name = "pytest" },
+    { name = "pytest-lazy-fixtures" },
+    { name = "pytest-mock" },
     { name = "ruff" },
 ]
 
@@ -1296,9 +1332,12 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "basedpyright", specifier = ">=1.36.2" },
-    { name = "hypothesis", specifier = ">=6.142.1" },
+    { name = "hypothesis", specifier = ">=6.148.9" },
     { name = "networkx", specifier = ">=3.5" },
+    { name = "pyhamcrest", specifier = ">=2.1.0" },
     { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pytest-lazy-fixtures", specifier = ">=1.4.0" },
+    { name = "pytest-mock", specifier = ">=3.15.1" },
     { name = "ruff", specifier = ">=0.13.3" },
 ]
 
