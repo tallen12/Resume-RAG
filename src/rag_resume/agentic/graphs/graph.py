@@ -2,10 +2,16 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from rag_resume.agentic.graphs.edges import GraphEdgeLike
-from rag_resume.agentic.graphs.types import GraphStateType, GraphStepsType, GraphStepsType_co
+from rag_resume.agentic.graphs.types import (
+    GraphStateType,
+    GraphStateType_contra,
+    GraphStateUpdateType_co,
+    GraphStepsType,
+    GraphStepsType_co,
+)
 
 
-class GraphAction(Protocol[GraphStateType]):
+class GraphAction(Protocol[GraphStateType_contra, GraphStateUpdateType_co]):
     """Represents a synchronous action that can be performed on a graph state.
 
     Args:
@@ -16,12 +22,12 @@ class GraphAction(Protocol[GraphStateType]):
         GraphStateType: The updated state of the graph after executing the action.
     """
 
-    def __call__(self, state: GraphStateType) -> GraphStateType:
+    def __call__(self, state: GraphStateType_contra) -> GraphStateUpdateType_co:
         """Call the GraphAction."""
         ...
 
 
-class AsyncGraphAction(Protocol[GraphStateType]):
+class AsyncGraphAction(Protocol[GraphStateType_contra, GraphStateUpdateType_co]):
     """Represents an asynchronous action that can be performed on a graph state.
 
     Args:
@@ -32,12 +38,12 @@ class AsyncGraphAction(Protocol[GraphStateType]):
         GraphStateType: The updated state of the graph after executing the action.
     """
 
-    async def __call__(self, state: GraphStateType) -> GraphStateType:
+    async def __call__(self, state: GraphStateType_contra) -> GraphStateUpdateType_co:
         """Call the AsyncGraphAction."""
         ...
 
 
-class GraphProtocol(Protocol[GraphStepsType, GraphStateType]):
+class GraphProtocol(Protocol[GraphStepsType, GraphStateType, GraphStateUpdateType_co]):
     """Protocol for graphs using a global state and typed names for steps.
 
     This protocol defines the interface for graphs that use a global state and typed names
@@ -60,7 +66,9 @@ class GraphProtocol(Protocol[GraphStepsType, GraphStateType]):
     def implementation_for(
         self,
         step: GraphStepsType,
-    ) -> GraphAction[GraphStateType] | AsyncGraphAction[GraphStateType]:
+    ) -> (
+        GraphAction[GraphStateType, GraphStateUpdateType_co] | AsyncGraphAction[GraphStateType, GraphStateUpdateType_co]
+    ):
         """Return the action to take for a given step.
 
         This method should return either a synchronous or asynchronous graph action that can be executed to perform
@@ -77,7 +85,7 @@ class GraphProtocol(Protocol[GraphStepsType, GraphStateType]):
         ...
 
 
-class AgentGraph(Protocol[GraphStepsType_co, GraphStateType]):
+class AgentGraph(Protocol[GraphStepsType_co, GraphStateType, GraphStateUpdateType_co]):
     """Protocol defining the interface for a synchronous agent graph.
 
     This protocol defines the operations that a concrete agent graph must implement
@@ -88,7 +96,7 @@ class AgentGraph(Protocol[GraphStepsType_co, GraphStateType]):
         GraphStateType: Type variable representing the state type in the graph.
     """
 
-    def __init__(self, impl: GraphProtocol[GraphStepsType_co, GraphStateType]) -> None: ...
+    def __init__(self, impl: GraphProtocol[GraphStepsType_co, GraphStateType, GraphStateUpdateType_co]) -> None: ...
 
     def invoke(self, initial_state: GraphStateType) -> GraphStateType:
         """Invoke the graph with an initial state and return the final state.
@@ -120,7 +128,7 @@ class AgentGraph(Protocol[GraphStepsType_co, GraphStateType]):
         ...
 
 
-class AsyncAgentGraph(Protocol[GraphStepsType_co, GraphStateType]):
+class AsyncAgentGraph(Protocol[GraphStepsType_co, GraphStateType, GraphStateUpdateType_co]):
     """Protocol defining the interface for an asynchronous agent graph.
 
     This protocol defines the operations that a concrete agent graph must implement
@@ -131,7 +139,7 @@ class AsyncAgentGraph(Protocol[GraphStepsType_co, GraphStateType]):
         GraphStateType: Type variable representing the state type in the graph.
     """
 
-    def __init__(self, impl: GraphProtocol[GraphStepsType_co, GraphStateType]) -> None: ...
+    def __init__(self, impl: GraphProtocol[GraphStepsType_co, GraphStateType, GraphStateUpdateType_co]) -> None: ...
 
     async def async_invoke(self, initial_state: GraphStateType) -> GraphStateType:
         """Invoke the graph with an initial state and return the final state.

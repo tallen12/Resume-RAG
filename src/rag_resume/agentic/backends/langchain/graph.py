@@ -6,7 +6,7 @@ from langgraph.graph import StateGraph  # pyright: ignore[reportMissingTypeStubs
 
 from rag_resume.agentic.graphs.edges import CommonGraphSteps, DynamicGraphCallable, DynamicGraphEdge, GraphEdge
 from rag_resume.agentic.graphs.graph import GraphProtocol
-from rag_resume.agentic.graphs.types import GraphStateType, GraphStepsType
+from rag_resume.agentic.graphs.types import GraphStateType, GraphStateUpdateType_co, GraphStepsType
 
 if TYPE_CHECKING:
     from seriacade.json.types import JsonType
@@ -41,7 +41,7 @@ def _wrap_dynamic_call_return(
 
 
 def _build_lang_graph(
-    impl: GraphProtocol[GraphStepsType, GraphStateType],
+    impl: GraphProtocol[GraphStepsType, GraphStateType, GraphStateUpdateType_co],
     node_name_overrides: dict[CommonGraphSteps | GraphStepsType, str] | None = None,
 ) -> StateGraph[GraphStateType, None, GraphStateType, GraphStateType]:
     """Builds a state graph for the given graph implementation.
@@ -69,10 +69,10 @@ def _build_lang_graph(
         CommonGraphSteps.END: END,
     }
     for step in impl.steps_type:
-        builder.add_node(
+        _ = builder.add_node(  # pyright: ignore[reportUnknownMemberType]
             node_name_overrides.get(step, step.name),
             impl.implementation_for(step),
-        )  # pyright: ignore[reportUnknownMemberType, reportUnusedCallResult]
+        )
     for edge in impl.graph_edges:
         match edge:
             case GraphEdge(start=start, end=end):
@@ -104,7 +104,7 @@ class LangchainGraph(Generic[GraphStepsType, GraphStateType]):
             The compiled state graph built from the graph protocol implementation.
     """
 
-    def __init__(self, impl: GraphProtocol[GraphStepsType, GraphStateType]) -> None:
+    def __init__(self, impl: GraphProtocol[GraphStepsType, GraphStateType, GraphStateUpdateType_co]) -> None:
         """Initializes a new instance of the LangchainGraph class.
 
         Args:

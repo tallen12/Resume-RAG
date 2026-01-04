@@ -14,3 +14,7 @@ GraphStepsType_co = TypeVar("GraphStepsType_co", bound=Enum, covariant=True)
 GraphStateType = TypeVar("GraphStateType", bound=GraphStateTypes)
 GraphStateType_contra = TypeVar("GraphStateType_contra", bound=GraphStateTypes, contravariant=True)
 GraphStateType_co = TypeVar("GraphStateType_co", bound=GraphStateTypes, covariant=True)
+
+GraphStateUpdateType = TypeVar("GraphStateUpdateType", bound=GraphStateTypes)
+GraphStateUpdateType_contra = TypeVar("GraphStateUpdateType_contra", bound=GraphStateTypes, contravariant=True)
+GraphStateUpdateType_co = TypeVar("GraphStateUpdateType_co", bound=GraphStateTypes, covariant=True)

@@ -6,7 +6,7 @@ import typing
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import final, override
+from typing import Annotated, final, override
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -32,7 +32,7 @@ class ResumeBuilderSteps(Enum):
 class ResumeBuilderState:
     """Data class representing the state of the resume builder pipeline."""
 
-    description: str
+    description: Annotated[str, int]
     experience: list[str] | None = None
     bullet_points: list[str] | None = None
 
@@ -51,7 +51,7 @@ class ResumeBuilderStructuredOutput(BaseModel):
 
 
 @final
-class ResumeBuilderPipeline(GraphProtocol[ResumeBuilderSteps, ResumeBuilderState]):
+class ResumeBuilderPipeline(GraphProtocol[ResumeBuilderSteps, ResumeBuilderState, ResumeBuilderState]):
     """Implementation of the resume builder pipeline using graph data structures."""
 
     steps_type = ResumeBuilderSteps
@@ -114,7 +114,7 @@ class ResumeBuilderPipeline(GraphProtocol[ResumeBuilderSteps, ResumeBuilderState
     @override
     def implementation_for(
         self, step: ResumeBuilderSteps
-    ) -> GraphAction[ResumeBuilderState] | AsyncGraphAction[ResumeBuilderState]:
+    ) -> GraphAction[ResumeBuilderState, ResumeBuilderState] | AsyncGraphAction[ResumeBuilderState, ResumeBuilderState]:
         """Implementation for each step in the pipeline.
 
         Args:
