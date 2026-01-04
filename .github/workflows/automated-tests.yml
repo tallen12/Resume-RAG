@@ -1,4 +1,4 @@
-name: On Commit Tests
+name: Automated Tests
 run-name:  Running automated tests and linting by ${{ github.actor }}
 on: [push, pull_request]
 jobs:
