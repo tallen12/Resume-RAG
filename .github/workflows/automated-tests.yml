@@ -3,7 +3,7 @@ run-name:  Running automated tests and linting by ${{ github.actor }}
 on: [push, pull_request]
 jobs:
   test:
-    name: tests
+    name: Automated Tests
     runs-on: ubuntu-latest
 
     steps:
