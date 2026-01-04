@@ -3,11 +3,11 @@ from __future__ import annotations
 import dataclasses
 import json
 import typing
-from collections.abc import Sequence
+from collections.abc import Sequence  # noqa: TC003
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Annotated, final, override
-from uuid import UUID
+from uuid import UUID  # noqa: TC003
 
 from pydantic import BaseModel
 from seriacade.implementations.pydantic import PydanticJsonCodec

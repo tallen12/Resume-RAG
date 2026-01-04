@@ -55,8 +55,8 @@ class GraphProtocol(Protocol[GraphStepsType, GraphStateType, GraphStateUpdateTyp
             stages or operations in the graph workflow.
         GraphStateType (type[GraphStateType]): The type of the graph state that this graph operates on. The state
             contains the data that is passed through the graph steps.
-        graph_edges (Sequence[GraphEdgeLike[GraphStepsType, GraphStateType]]): A sequence of graph edges that define the connections between steps
-            in the graph. Each edge represents a relationship between steps.
+        graph_edges (Sequence[GraphEdgeLike[GraphStepsType, GraphStateType]]): A sequence of graph edges that define the
+             connections between steps in the graph. Each edge represents a relationship between steps.
     """
 
     steps_type: type[GraphStepsType]
