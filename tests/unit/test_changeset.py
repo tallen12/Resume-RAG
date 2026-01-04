@@ -8,7 +8,7 @@ from rag_resume.changeset import ChangeSet, NoChange, OverwriteChange, ReducerCh
 
 
 @given(current=st.integers() | st.booleans() | st.text())
-def test_no_change_apply(current: bool | str | float) -> None:
+def test_no_change_apply(current: bool | str | float) -> None:  # noqa: FBT001
     """Test NoChange applies no change to current value."""
     change = NoChange()
     assert_that(change.apply(current), equal_to(current))
