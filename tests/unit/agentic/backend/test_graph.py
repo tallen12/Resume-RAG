@@ -3,17 +3,17 @@ import itertools
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Protocol
 
 import pytest
-from hamcrest import assert_that, equal_to
-from hypothesis import HealthCheck, Phase, example, given, settings
+from hamcrest import assert_that, contains_inanyorder, equal_to
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from pytest_mock import MockerFixture
 
 from rag_resume.agentic.backends.langchain.graph import LangchainGraph
 from rag_resume.agentic.graphs.edges import CommonGraphSteps, DynamicGraphEdge, GraphEdge
-from rag_resume.agentic.graphs.graph import AgentGraph
+from rag_resume.agentic.graphs.graph import AgentGraph, AsyncAgentGraph
 from rag_resume.changeset import ChangeSet, NoChange, ReducerChange, apply_changeset
 from tests.helpers.graph import ParameterizedTestGraph
 
@@ -36,12 +36,16 @@ class SimpleTestGraphUpdate:
     should_end: ChangeSet[bool] = field(default_factory=NoChange)
 
 
+class AssertionCall(Protocol):
+    def __call__(self, batch_size: int) -> None: ...
+
+
 @dataclass
 class GraphTestCase:
     graph: ParameterizedTestGraph[SimpleTestGraphStep, SimpleTestGraphState, SimpleTestGraphUpdate]
     start_state: SimpleTestGraphState
     expected_end_state: SimpleTestGraphState
-    assertions: Callable[[], None]
+    assertions: AssertionCall
 
 
 def iterate_state(_: SimpleTestGraphState) -> SimpleTestGraphUpdate:
@@ -58,10 +62,16 @@ def simple_graph_test_case(
     step_two = mocker.Mock(side_effect=iterate_state)
     step_three = mocker.Mock(side_effect=iterate_state)
 
-    def assertions() -> None:
-        step_one.assert_called_once_with(start)
-        step_two.assert_called_once_with(dataclasses.replace(start, visits=start.visits + 1))
-        step_three.assert_called_once_with(dataclasses.replace(start, visits=start.visits + 2))
+    def assertions(batch_size: int = 1) -> None:
+        assert_that(step_one.mock_calls, contains_inanyorder(*[mocker.call(start)] * batch_size))
+        assert_that(
+            step_two.mock_calls,
+            contains_inanyorder(*[mocker.call(dataclasses.replace(start, visits=start.visits + 1))] * batch_size),
+        )
+        assert_that(
+            step_three.mock_calls,
+            contains_inanyorder(*[mocker.call(dataclasses.replace(start, visits=start.visits + 2))] * batch_size),
+        )
 
     graph: ParameterizedTestGraph[SimpleTestGraphStep, SimpleTestGraphState, SimpleTestGraphUpdate] = (
         ParameterizedTestGraph(
@@ -91,11 +101,17 @@ def dynamic_simple_graph_test_case(start: SimpleTestGraphState, mocker: MockerFi
 
     end = dataclasses.replace(start, visits=start.visits + 3) if not start.should_end else start
 
-    def assertions() -> None:
+    def assertions(batch_size: int = 1) -> None:
         if not start.should_end:
-            step_one.assert_called_once_with(start)
-            step_two.assert_called_once_with(dataclasses.replace(start, visits=start.visits + 1))
-            step_three.assert_called_once_with(dataclasses.replace(start, visits=start.visits + 2))
+            assert_that(step_one.mock_calls, contains_inanyorder(*[mocker.call(start)] * batch_size))
+            assert_that(
+                step_two.mock_calls,
+                contains_inanyorder(*[mocker.call(dataclasses.replace(start, visits=start.visits + 1))] * batch_size),
+            )
+            assert_that(
+                step_three.mock_calls,
+                contains_inanyorder(*[mocker.call(dataclasses.replace(start, visits=start.visits + 2))] * batch_size),
+            )
         else:
             step_one.assert_not_called()
             step_two.assert_not_called()
@@ -153,12 +169,21 @@ def looped_graph_case(start: SimpleTestGraphState, mocker: MockerFixture) -> Gra
 
     end = dataclasses.replace(start, visits=start.visits + 4)
 
-    def assertions() -> None:
-        step_one.assert_has_calls(
-            calls=[mocker.call(start), mocker.call(dataclasses.replace(start, visits=start.visits + 3))]  # pyright: ignore[reportArgumentType]
+    def assertions(batch_size: int = 1) -> None:
+        assert_that(
+            step_one.mock_calls,
+            contains_inanyorder(
+                *[mocker.call(start), mocker.call(dataclasses.replace(start, visits=start.visits + 3))] * batch_size
+            ),
         )
-        step_two.assert_called_once_with(dataclasses.replace(start, visits=start.visits + 1))
-        step_three.assert_called_once_with(dataclasses.replace(start, visits=start.visits + 2))
+        assert_that(
+            step_two.mock_calls,
+            contains_inanyorder(*[mocker.call(dataclasses.replace(start, visits=start.visits + 1))] * batch_size),
+        )
+        assert_that(
+            step_three.mock_calls,
+            contains_inanyorder(*[mocker.call(dataclasses.replace(start, visits=start.visits + 2))] * batch_size),
+        )
 
     return GraphTestCase(graph, start, end, assertions)
 
@@ -187,12 +212,19 @@ def parallel_graph_case(start: SimpleTestGraphState, mocker: MockerFixture) -> G
 
     end = dataclasses.replace(start, visits=start.visits + 3)
 
-    def assertions() -> None:
-        # Check input states are the same as the start
-        step_two.assert_called_once_with(dataclasses.replace(start, visits=start.visits))
-        step_two.assert_called_once_with(dataclasses.replace(start, visits=start.visits))
-        # Check Step three is the state after both step_one and step_two
-        step_three.assert_called_once_with(dataclasses.replace(start, visits=start.visits + 2))
+    def assertions(batch_size: int = 1) -> None:
+        assert_that(
+            step_one.mock_calls,
+            contains_inanyorder(*[mocker.call(dataclasses.replace(start, visits=start.visits))] * batch_size),
+        )
+        assert_that(
+            step_two.mock_calls,
+            contains_inanyorder(*[mocker.call(dataclasses.replace(start, visits=start.visits))] * batch_size),
+        )
+        assert_that(
+            step_three.mock_calls,
+            contains_inanyorder(*[mocker.call(dataclasses.replace(start, visits=start.visits + 2))] * batch_size),
+        )
 
     return GraphTestCase(graph, start, end, assertions)
 
@@ -201,22 +233,82 @@ TEST_CASES = (simple_graph_test_case, dynamic_simple_graph_test_case, looped_gra
 
 
 @given(state=st.tuples(st.integers(), st.booleans()))
-@example(state=(0, True))
 @pytest.mark.parametrize(
     ("graph_test_case_generator", "graph_backend"), itertools.product(TEST_CASES, (LangchainGraph,))
 )
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture], phases=[Phase.explicit])
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_graph_invoke_for_implementation(
     state: tuple[int, bool],
     graph_test_case_generator: Callable[[SimpleTestGraphState, MockerFixture], GraphTestCase],
     graph_backend: type[AgentGraph[SimpleTestGraphStep, SimpleTestGraphState, SimpleTestGraphUpdate]],
     mocker: MockerFixture,
 ) -> None:
-    """Property based testing against some basic graphs to ensure the backends generate the graphs correctly"""
+    """Property based testing AgentGraph.invoke against some basic graphs to ensure the backends work correctly"""
     graph_test_case = graph_test_case_generator(SimpleTestGraphState(state[0], state[1]), mocker)
     graph: AgentGraph[SimpleTestGraphStep, SimpleTestGraphState, SimpleTestGraphUpdate] = graph_backend(
         graph_test_case.graph
     )
     result = graph.invoke(graph_test_case.start_state)
     assert_that(result, equal_to(graph_test_case.expected_end_state))
-    graph_test_case.assertions()
+    graph_test_case.assertions(batch_size=1)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("graph_test_case_generator", "graph_backend"), itertools.product(TEST_CASES, (LangchainGraph,))
+)
+@given(state=st.tuples(st.integers(), st.booleans()))
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+async def test_graph_async_invoke_for_implementation(
+    state: tuple[int, bool],
+    graph_test_case_generator: Callable[[SimpleTestGraphState, MockerFixture], GraphTestCase],
+    graph_backend: type[AsyncAgentGraph[SimpleTestGraphStep, SimpleTestGraphState, SimpleTestGraphUpdate]],
+    mocker: MockerFixture,
+) -> None:
+    """Property based testing AsyncAgentGraph.async_invoke against some basic graphs to ensure the backends work
+    correctly."""
+    graph_test_case = graph_test_case_generator(SimpleTestGraphState(state[0], state[1]), mocker)
+    graph = graph_backend(graph_test_case.graph)
+    result = await graph.async_invoke(graph_test_case.start_state)
+    assert_that(result, equal_to(graph_test_case.expected_end_state))
+    graph_test_case.assertions(batch_size=1)
+
+
+@pytest.mark.parametrize(
+    ("graph_test_case_generator", "graph_backend"), itertools.product(TEST_CASES, (LangchainGraph,))
+)
+@given(state=st.tuples(st.integers(), st.booleans()))
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+def test_graph_batch_for_implementation(
+    state: tuple[int, bool],
+    graph_test_case_generator: Callable[[SimpleTestGraphState, MockerFixture], GraphTestCase],
+    graph_backend: type[AgentGraph[SimpleTestGraphStep, SimpleTestGraphState, SimpleTestGraphUpdate]],
+    mocker: MockerFixture,
+) -> None:
+    """Property based testing AgentGraph.batch against some basic graphs to ensure the backends work correctly"""
+    graph_test_case = graph_test_case_generator(SimpleTestGraphState(state[0], state[1]), mocker)
+    graph = graph_backend(graph_test_case.graph)
+    result = graph.batch([graph_test_case.start_state] * 5)
+    assert_that(result, equal_to([graph_test_case.expected_end_state] * 5))
+    graph_test_case.assertions(batch_size=5)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("graph_test_case_generator", "graph_backend"), itertools.product(TEST_CASES, (LangchainGraph,))
+)
+@given(state=st.tuples(st.integers(), st.booleans()))
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+async def test_graph_async_batch_for_implementation(
+    state: tuple[int, bool],
+    graph_test_case_generator: Callable[[SimpleTestGraphState, MockerFixture], GraphTestCase],
+    graph_backend: type[AsyncAgentGraph[SimpleTestGraphStep, SimpleTestGraphState, SimpleTestGraphUpdate]],
+    mocker: MockerFixture,
+) -> None:
+    """Property based testing AsyncAgentGraph.async_batch against some basic graphs to ensure the backends work
+    correctly,"""
+    graph_test_case = graph_test_case_generator(SimpleTestGraphState(state[0], state[1]), mocker)
+    graph = graph_backend(graph_test_case.graph)
+    result = await graph.async_batch([graph_test_case.start_state] * 5)
+    assert_that(result, equal_to([graph_test_case.expected_end_state] * 5))
+    graph_test_case.assertions(batch_size=5)
