@@ -1,0 +1,153 @@
+from typing import Any, Self, TypeVar, cast, final, override
+
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages.base import BaseMessage
+from langchain_core.runnables import RunnableLambda
+from seriacade.json.interfaces import JsonCodecWithSchemaProtocol
+from seriacade.json.types import JsonType
+
+from rag_resume.agentic.llms.chat import ChatLLMProtocol, ChatMessage, ChatRole
+from rag_resume.json import enforce_dict_type
+
+T = TypeVar("T")
+
+
+def convert_to_langchain_message(chat_message: ChatMessage) -> HumanMessage | SystemMessage | AIMessage:
+    """Converts a ChatMessage to a corresponding message type in the langchain library.
+
+    Args:
+        chat_message (ChatMessage): The ChatMessage object to convert. This represents a message in the chat
+            with a specific role (USER, SYSTEM, or ASSISTANT) and content.
+
+    Returns:
+        Union[HumanMessage, SystemMessage, AIMessage]: The converted message in langchain format.
+    """
+    match chat_message.role:
+        case ChatRole.USER:
+            return HumanMessage(content=chat_message.content)
+        case ChatRole.SYSTEM:
+            return SystemMessage(content=chat_message.content)
+        case ChatRole.ASSISTANT:
+            return AIMessage(content=chat_message.content)
+
+
+def convert_response_to_chat_message(chat_message: BaseMessage) -> ChatMessage:
+    """Converts a langchain BaseMessage to a ChatMessage.
+
+    Args:
+        chat_message (BaseMessage): The message returned by a langchain model. This message can be of type
+            AIMessage, HumanMessage, or SystemMessage.
+
+    Returns:
+        ChatMessage: A ChatMessage object representing the response from the language model.
+
+    Raises:
+        ValueError: If the message type is unexpected (not AIMessage).
+    """
+    match chat_message:
+        # This function is only used to parse the responses from a LLM, it should only be an AI message
+        case AIMessage() as message:
+            return ChatMessage(
+                role=ChatRole.ASSISTANT,
+                content=cast("str | list[str | dict[str, JsonType]]", chat_message.content),
+                response_metadata=cast("JsonType", message.response_metadata),
+                id=message.id,
+                usage_metadata=cast("JsonType", message.usage_metadata),
+            )
+        case _:
+            msg = f"Langchain returned unexpected message type: {type(chat_message)}"
+            raise ValueError(msg)
+
+
+def _extract_base_message_from_structured(message: dict[str, Any]) -> BaseMessage:  # pyright: ignore[reportExplicitAny]
+    return message["raw"]  # pyright: ignore[reportAny]
+
+
+@final
+class LangChainChatLLM(ChatLLMProtocol):
+    """Wrapper for langchain LLMs to match internal protocols.
+
+    This class provides a wrapper around langchain's BaseChatModel to align with the internal ChatLLMProtocol
+    interface used in the project. It allows for structured output handling and message conversion between
+    langchain and the internal message formats.
+
+    Attributes:
+        lang_chain_model (BaseChatModel): The underlying langchain chat model.
+        structured_output (dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None): Optional schema
+            for structured output. If provided, the model's output will be parsed according to this schema.
+        runnable (RunnableLambda): A runnable that processes the chat messages and returns a ChatMessage.
+    """
+
+    def __init__(
+        self,
+        lang_chain_model: BaseChatModel,
+        structured_output: dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None = None,
+    ) -> None:
+        """Initializes the LangChainChatLLM wrapper.
+
+        Args:
+            lang_chain_model (BaseChatModel): The langchain chat model to wrap.
+            structured_output (dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None, optional):
+                Optional schema for structured output. If provided, the model's output will be parsed according
+                to this schema. Defaults to None.
+        """
+        self.lang_chain_model = lang_chain_model
+        self.codec = None
+
+        match structured_output:
+            case dict():
+                self.structured_output = structured_output
+            case JsonCodecWithSchemaProtocol():
+                self.structured_output = enforce_dict_type(structured_output.json_schema())
+            case None:
+                self.structured_output = None
+
+        if self.structured_output:
+            self.runnable = self.lang_chain_model.with_structured_output(  # pyright: ignore[reportUnknownMemberType]
+                schema=self.structured_output, include_raw=True
+            ) | RunnableLambda(_extract_base_message_from_structured)
+        else:
+            self.runnable = self.lang_chain_model
+
+    @override
+    def chat(self, messages: list[ChatMessage]) -> ChatMessage:
+        """Sends a list of chat messages to the language model and returns a response message.
+
+        Args:
+            messages (list[ChatMessage]): A list of chat messages to be sent to the language model.
+
+        Returns:
+            ChatMessage: The response message generated by the language model.
+        """
+        message = [convert_to_langchain_message(msg) for msg in messages]
+        return convert_response_to_chat_message(self.runnable.invoke(message))
+
+    @override
+    async def async_chat(self, messages: list[ChatMessage]) -> ChatMessage:
+        """Asynchronously sends a list of chat messages to the language model and returns a response message.
+
+        Args:
+            messages (list[ChatMessage]): A list of chat messages to be sent to the language model.
+
+        Returns:
+            ChatMessage: The response message generated by the language model.
+        """
+        message = [convert_to_langchain_message(msg) for msg in messages]
+        return convert_response_to_chat_message(await self.runnable.ainvoke(message))
+
+    @override
+    def with_structured_output(
+        self, structured_output: dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None
+    ) -> Self:
+        """Returns a new instance of LangChainChatLLM with the specified structured output schema.
+
+        Args:
+            structured_output (dict[str, JsonType] | JsonCodecWithSchemaProtocol[T] | None):
+                The schema for structured output. If provided, the model's output will be parsed according to
+                this schema.
+
+        Returns:
+            Self: A new instance of LangChainChatLLM with the specified structured output schema.
+        """
+        return self.__class__(lang_chain_model=self.lang_chain_model, structured_output=structured_output)

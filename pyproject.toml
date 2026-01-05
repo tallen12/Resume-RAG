@@ -9,12 +9,14 @@ authors = [
 
 requires-python = ">=3.12"
 dependencies = [
+    "basedpyright>=1.36.2",
     "fastapi>=0.118.0",
     "langchain>=0.3.27",
     "langchain-community>=0.3.30",
     "langchain-ollama>=0.3.10",
     "langgraph>=0.6.8",
     "pydantic-settings>=2.11.0",
+    "seriacade[pydantic]",
     "sqlalchemy>=2.0.43",
 ]
 
@@ -27,9 +29,13 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "hypothesis>=6.142.1",
+    "basedpyright>=1.36.2",
+    "hypothesis>=6.148.9",
     "networkx>=3.5",
+    "pyhamcrest>=2.1.0",
     "pytest>=8.4.2",
+    "pytest-lazy-fixtures>=1.4.0",
+    "pytest-mock>=3.15.1",
     "ruff>=0.13.3",
 ]
 
@@ -65,7 +71,9 @@ ignore = [
     "D102",
     "D104",
     "D105",
-    "D107"
+    "D107",
+    "TD002",
+    "TD003"
 ]
 
 [tool.ruff.lint.flake8-annotations]
@@ -76,3 +84,11 @@ max-doc-length = 120
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.uv.sources]
+seriacade = { git = "https://github.com/tallen12/seriacade" }
+
+[tool.ruff.per-file-ignores]
+# Ignore all directories named `tests`.
+"tests/**" = ["D"]
+

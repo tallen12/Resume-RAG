@@ -1,0 +1,27 @@
+name: Automated Tests
+run-name:  Running automated tests and linting by ${{ github.actor }}
+on: [push, pull_request]
+jobs:
+  test:
+    name: Automated Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Typecheck
+        run: uv run basedpyright
+
+      - name: Lint
+        run: uv run ruff check --ignore=FIX
+
+      - name: Unit tests
+        run: uv run pytest tests/unit

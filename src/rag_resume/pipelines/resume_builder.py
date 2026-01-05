@@ -3,86 +3,83 @@ from __future__ import annotations
 import dataclasses
 import json
 import typing
-import uuid
+from collections.abc import Sequence  # noqa: TC003
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, final
+from typing import Annotated, final, override
+from uuid import UUID  # noqa: TC003
 
 from pydantic import BaseModel
+from seriacade.implementations.pydantic import PydanticJsonCodec
 
-from rag_resume.graph.edges import CommonGraphStates, PipelineEdge
-from rag_resume.json import JsonCodecProtocol, PythonJSONType
-from rag_resume.llms.chat import ChatMessage, ChatRole
-from rag_resume.pipelines.types import AsyncPipelineAction, PipelineAction, PipelineProtocol
+from rag_resume.agentic.graphs.edges import CommonGraphSteps, GraphEdge, GraphEdgeLike
+from rag_resume.agentic.graphs.graph import AsyncGraphAction, GraphAction, GraphProtocol
+from rag_resume.agentic.llms.chat import ChatMessage, ChatRole
 
 if typing.TYPE_CHECKING:
-    from rag_resume.llms.chat import ChatLLMProtocol
-    from rag_resume.llms.embedding import VectorStoreProtocol
+    from rag_resume.agentic.llms.chat import ChatLLMProtocol
+    from rag_resume.agentic.llms.embedding import VectorStoreProtocol
 
 
 class ResumeBuilderSteps(Enum):
-    """Resume builder pipeline steps."""
+    """Enum representing the steps in the resume builder pipeline."""
 
-    LOOKUP_EXPRIENCE = auto()
+    LOOKUP_EXPERIENCE = auto()
     GENERATE_BULLET_POINTS = auto()
 
 
 @dataclass
 class ResumeBuilderState:
-    """Resume builder state."""
+    """Data class representing the state of the resume builder pipeline."""
 
-    description: str
-    exprience: list[str] | None = None
+    description: Annotated[str, int]
+    experience: list[str] | None = None
     bullet_points: list[str] | None = None
 
 
 class ResumeBuilderVectorMetadata(BaseModel):
+    """Pydantic model for metadata used in the resume builder vector store."""
+
     user_name: str | None = None
-    user_id: uuid.UUID | None = None
+    user_id: UUID | None = None
+
+
+class ResumeBuilderStructuredOutput(BaseModel):
+    """Pydantic model for structured output from the resume builder pipeline."""
+
+    bullet_points: list[str]
 
 
 @final
-class ResumeBuilderVectorMetadataCodec(JsonCodecProtocol[ResumeBuilderVectorMetadata]):
-    def encode_json(self, data: ResumeBuilderVectorMetadata) -> bytes:
-        return ResumeBuilderVectorMetadata.model_dump_json(data).encode()
-
-    def encode_python_json(self, data: ResumeBuilderVectorMetadata) -> PythonJSONType:
-        return ResumeBuilderVectorMetadata.model_dump(data)
-
-    def decode_json(self, data: bytes) -> ResumeBuilderVectorMetadata:
-        return ResumeBuilderVectorMetadata.model_validate_json(data)
-
-    def convert_json(self, data: PythonJSONType) -> ResumeBuilderVectorMetadata:
-        return ResumeBuilderVectorMetadata.model_validate(data)
-
-    def schema(self) -> dict[str, Any]:
-        return ResumeBuilderVectorMetadata.model_json_schema()
-
-
-@final
-class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderState]):
-    """Pipeline implementation for ResumeBuilder task."""
+class ResumeBuilderPipeline(GraphProtocol[ResumeBuilderSteps, ResumeBuilderState, ResumeBuilderState]):
+    """Implementation of the resume builder pipeline using graph data structures."""
 
     steps_type = ResumeBuilderSteps
     state_type = ResumeBuilderState
 
+    graph_edges: Sequence[GraphEdgeLike[ResumeBuilderSteps, ResumeBuilderState]] = (
+        GraphEdge(
+            CommonGraphSteps.START,
+            ResumeBuilderSteps.LOOKUP_EXPERIENCE,
+        ),
+        GraphEdge(
+            ResumeBuilderSteps.LOOKUP_EXPERIENCE,
+            ResumeBuilderSteps.GENERATE_BULLET_POINTS,
+        ),
+        GraphEdge(ResumeBuilderSteps.LOOKUP_EXPERIENCE, CommonGraphSteps.END),
+    )
+
     def __init__(
         self, chat_llm: ChatLLMProtocol, vector_store: VectorStoreProtocol[ResumeBuilderVectorMetadata]
     ) -> None:
-        """Initialize ResumeBuilderPipeline."""
+        """Initialize the ResumeBuilderPipeline with a chat language model and a vector store.
+
+        Args:
+            chat_llm (ChatLLMProtocol): The chat language model to use for generating responses.
+            vector_store (VectorStoreProtocol[ResumeBuilderVectorMetadata]): The vector store for embeddings.
+        """
         self.chat_llm = chat_llm
         self.vector_store = vector_store
-        self.graph_edges = [
-            PipelineEdge(
-                CommonGraphStates.START,
-                ResumeBuilderSteps.LOOKUP_EXPRIENCE,
-            ),
-            PipelineEdge(
-                ResumeBuilderSteps.LOOKUP_EXPRIENCE,
-                ResumeBuilderSteps.GENERATE_BULLET_POINTS,
-            ),
-            PipelineEdge(ResumeBuilderSteps.LOOKUP_EXPRIENCE, CommonGraphStates.END),
-        ]
 
     def lookup(self, state: ResumeBuilderState) -> ResumeBuilderState:
         """Lookup experience based on the query.
@@ -106,15 +103,18 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
             ResumeBuilderState: The updated state of the pipeline after generating bullet points.
         """
         prompt = {
-            "prompt": "Generate bullet points for the following exprience that best match this description",
-            "exprience": state.exprience,
+            "prompt": "Generate bullet points for the following experience that best match this description",
+            "exprience": state.experience,
         }
-        response = self.chat_llm.chat(messages=[ChatMessage(ChatRole.USER, content=json.dumps(prompt))])
+        response: ChatMessage = self.chat_llm.with_structured_output(
+            structured_output=PydanticJsonCodec(model_type=ResumeBuilderStructuredOutput)
+        ).chat(messages=[ChatMessage(role=ChatRole.USER, content=json.dumps(prompt))])
         return dataclasses.replace(state, bullet_points=response.content)
 
+    @override
     def implementation_for(
         self, step: ResumeBuilderSteps
-    ) -> PipelineAction[ResumeBuilderState] | AsyncPipelineAction[ResumeBuilderState]:
+    ) -> GraphAction[ResumeBuilderState, ResumeBuilderState] | AsyncGraphAction[ResumeBuilderState, ResumeBuilderState]:
         """Implementation for each step in the pipeline.
 
         Args:
@@ -125,7 +125,7 @@ class ResumeBuilderPipeline(PipelineProtocol[ResumeBuilderSteps, ResumeBuilderSt
                 for the given step.
         """
         match step:
-            case ResumeBuilderSteps.LOOKUP_EXPRIENCE:
+            case ResumeBuilderSteps.LOOKUP_EXPERIENCE:
                 return self.lookup
             case ResumeBuilderSteps.GENERATE_BULLET_POINTS:
                 return self.generate
